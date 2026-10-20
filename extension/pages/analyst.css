@@ -55,9 +55,9 @@ a.chip:hover { border-color: var(--accent); color: var(--accent); }
 .chip.ok { color: var(--ok); border-color: var(--ok); }
 .chip.bad { color: var(--block); border-color: var(--block); }
 .chip.off { opacity: .6; }
-.sum { margin: 6px 0; font-size: 13px; }
+.sum { margin: 6px 0; font-size: 13px; overflow-wrap: anywhere; }
 ul.why { list-style: none; padding: 0; margin: 6px 0; font-size: 12.5px; }
-ul.why li { padding: 2px 0 2px 18px; position: relative; }
+ul.why li { padding: 2px 0 2px 18px; position: relative; overflow-wrap: anywhere; }
 ul.why li::before { position: absolute; left: 2px; top: 2px; font-size: 11px; }
 ul.why li.bad::before { content: "▲"; color: var(--block); }
 ul.why li.good::before { content: "▼"; color: var(--ok); }

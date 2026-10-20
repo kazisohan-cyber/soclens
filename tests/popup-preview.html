@@ -12,12 +12,12 @@
 (function () {
   const now = Date.now(), ago = (min) => new Date(now - min * 60e3).toISOString();
   const events = [
-    { type: 'page_warned', severity: 'medium', ts: ago(8), host: 'www.abuseipdb.com', url: 'https://www.abuseipdb.com/account', urlDefanged: 'hxxps://www[.]abuseipdb[.]com/account', reasons: ['Asks for a password while mentioning Google'], brand: 'Google' },
-    { type: 'page_warned', severity: 'medium', ts: ago(74), host: 'www.abuseipdb.com', url: 'https://www.abuseipdb.com/account', reasons: ['Asks for a password while mentioning Google'], brand: 'Google' },
-    { type: 'phishing_email_detected', severity: 'high', ts: ago(300), email: { sender: 'it-helpdesk@micros0ft-support.top', subject: 'Your mailbox is full: verify now' }, reasons: ['Sender pretends to be Microsoft'] },
-    { type: 'credential_reuse_blocked', severity: 'critical', ts: ago(900), host: 'docs-share-portal.com', url: 'https://docs-share-portal.com/x', reasons: ['Corporate password typed on a site outside the organisation'] },
-    { type: 'user_bypass', severity: 'medium', ts: ago(1380), host: 'login.microsoftonline.com.example.top', url: 'https://login.microsoftonline.com.example.top/' },
-    { type: 'url_blocked', severity: 'high', ts: ago(1381), host: 'login.microsoftonline.com.example.top', url: 'https://login.microsoftonline.com.example.top/', urlDefanged: 'hxxps://login[.]microsoftonline[.]com[.]example[.]top/', reasons: ['Real brand domain used as a prefix: login.microsoftonline.com', 'High-abuse top-level domain ".top"'], brand: 'Microsoft' }
+    { type: 'page_warned', severity: 'medium', ts: ago(8), host: 'portal.payroll-update.example', url: 'https://portal.payroll-update.example/signin', urlDefanged: 'hxxps://portal[.]payroll-update[.]example/signin', reasons: ['Asks for a password while mentioning Microsoft', 'Domain registered 20 days ago'], brand: 'Microsoft' },
+    { type: 'page_warned', severity: 'medium', ts: ago(74), host: 'portal.payroll-update.example', url: 'https://portal.payroll-update.example/signin', reasons: ['Asks for a password while mentioning Microsoft'], brand: 'Microsoft' },
+    { type: 'phishing_email_detected', severity: 'high', ts: ago(300), email: { sender: 'it-helpdesk@micros0ft-support.example', subject: 'Your mailbox is full: verify now' }, reasons: ['Sender pretends to be Microsoft'] },
+    { type: 'credential_reuse_blocked', severity: 'critical', ts: ago(900), host: 'docs-share-portal.example', url: 'https://docs-share-portal.example/x', reasons: ['Corporate password typed on a site outside the organisation'] },
+    { type: 'user_bypass', severity: 'medium', ts: ago(1380), host: 'login.microsoftonline.com.secure-docs.example', url: 'https://login.microsoftonline.com.secure-docs.example/' },
+    { type: 'url_blocked', severity: 'high', ts: ago(1381), host: 'login.microsoftonline.com.secure-docs.example', url: 'https://login.microsoftonline.com.secure-docs.example/', urlDefanged: 'hxxps://login[.]microsoftonline[.]com[.]secure-docs[.]example/', reasons: ['Real brand domain used as a prefix: login.microsoftonline.com', 'High-abuse top-level domain'], brand: 'Microsoft' }
   ];
   const state = { verdict: null, url: '', events, enrolled: 0, queue: 0, lastSync: now, soc: true, tenantId: 'acme-soc', allowBypass: true, credentialGuard: true,
     version: 'preview', mode: 'managed', reporting: 'full', consent: true, revoked: false, blocklistSize: 32073, blocklistAt: now - 12 * 60e3,
@@ -27,6 +27,10 @@
   if (q.get('mode') === 'local') Object.assign(state, { mode: 'local', soc: false, reporting: 'off', tenantId: '', blocklistSize: 0, blocklistAt: 0 });
   if (q.get('stale')) Object.assign(state, { blocklistAt: now - 9 * 3600e3, queue: 7, oldestQueued: now - 3 * 3600e3 });
   if (q.get('enrolled')) Object.assign(state, { enrolled: 1, credLearned: { host: 'login.microsoftonline.com', ts: now - 864e5 } });
+  // ?site=phish: the current tab is a fake Microsoft login (sample domain).
+  if (q.get('site') === 'phish') Object.assign(state, { url: 'https://login.microsoftonline.com.secure-docs.example/auth', verdict: {
+    host: 'login.microsoftonline.com.secure-docs.example', level: 'block', score: 95, allow: false, brand: 'Microsoft',
+    reasons: ['Real brand domain used as a prefix: login.microsoftonline.com', 'Login page imitates Microsoft (logo / title) on a non-Microsoft site', 'Domain registered only 2 day(s) ago'] } });
   const q2 = new URLSearchParams(location.search);
   window.chrome = {
     runtime: { getURL: (p) => '../extension/' + p, openOptionsPage() {}, sendMessage: async (m) => m.type === 'popupState' ? state : m.type === 'verifyState' ? { enabled: false, pending: [] } : { ok: true } },

@@ -1,6 +1,32 @@
-# SOCLens – SOC Analyst Assistant & Phishing Protection (browser extension)
+# SOCLens: SOC analyst assistant & phishing protection
 
-Lightweight Chrome / Edge (Manifest V3) extension by OpsVantage. No frameworks, no build step, about 250 KB.
+**Select any IP, domain, URL, hash or CVE → right-click → Investigate.** One verdict from up to 15 intel sources, in plain words, with what to do next. Then copy a ready ticket note.
+
+Free, open source, privacy-first. A Chrome / Edge extension (Manifest V3) by OpsVantage. No account, no server: everything runs in your browser, and intel lookups send only the indicator. No frameworks, no build step, about 250 KB.
+
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Release](https://img.shields.io/github/v/release/kazisohan-cyber/soclens)](https://github.com/kazisohan-cyber/soclens/releases)
+
+<p align="center">
+  <img src="docs/screenshots/01-investigate.jpg" width="32%" alt="Investigate a whole alert: every indicator gets a verdict, with client context from memory">
+  <img src="docs/screenshots/02-verdicts.jpg" width="32%" alt="Verdicts with reasons, sources and next steps for a URL, a file hash and a CVE">
+  <img src="docs/screenshots/05-popup.jpg" width="32%" alt="Toolbar popup: phishing block, protection health and recent activity">
+</p>
+
+## Install (1 minute)
+
+1. Download `soclens-extension-v*.zip` from the [latest release](https://github.com/kazisohan-cyber/soclens/releases/latest) and unzip it.
+2. Open `chrome://extensions` (or `edge://extensions`) → turn on **Developer mode** → **Load unpacked** → pick the unzipped folder.
+3. Select any indicator on a page → right-click → **SOCLens: Investigate**. Optional: add free VirusTotal / AbuseIPDB keys in the panel's setup card (2 minutes) for known-bad verdicts.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Investigate](docs/screenshots/01-investigate.jpg)<br>**Paste a whole alert.** Every indicator is checked; client memory adds context (accounts, hosts, VPN ranges). | ![Verdicts](docs/screenshots/02-verdicts.jpg)<br>**Explainable verdicts.** Reasons, the sources behind them, and next steps for URLs, hashes and CVEs. |
+| ![Email headers](docs/screenshots/03-email-headers.jpg)<br>**Email header analysis, on the device.** SPF / DKIM / DMARC, BEC patterns, delivery path. | ![Client memory](docs/screenshots/04-client-memory.jpg)<br>**Client memory.** What is normal per client, with owner, ticket and expiry. |
+| ![Popup](docs/screenshots/05-popup.jpg)<br>**Phishing protection + health.** Blocks fake logins, says what needs attention. | ![Highlighting](docs/screenshots/06-highlighting.jpg)<br>**IOC highlighting on SOC consoles.** Coloured by client memory and past verdicts; click for a verdict. |
+
+<sub>Screenshots use sample data: documentation IP ranges (RFC 5737), `.example` / demo domains, the EICAR test file and public CVE data. Reproduce them with `tests/analyst-preview.html?demo=1`.</sub>
 
 ## What it does
 
@@ -14,7 +40,7 @@ Lightweight Chrome / Edge (Manifest V3) extension by OpsVantage. No frameworks, 
 
 **Privacy:** email bodies and typed passwords never leave the browser. SOC events contain URL, host, reasons, and for emails only sender / subject / defanged links.
 
-## SOC analyst assistant (v0.4)
+## SOC analyst assistant
 
 An independent analyst toolkit inside the same extension. You don't need a server or an account: install it and it works.
 
@@ -41,7 +67,7 @@ Tests: serve this folder (`python -m http.server 8765`) and open:
 - `http://localhost:8765/tests/analyzer.test.html`: 58 analyzer cases.
 - `tests/analyst.test.html`: 84 cases for the IOC parser, verdict engine, client memory, ticket notes, header analyzer and activity list.
 - `tests/mock-webmail.html`: email UI.
-- `tests/analyst-preview.html`: the real side panel against the live free APIs. GreyNoise and CISA KEV are blocked by CORS on localhost only.
+- `tests/analyst-preview.html`: the real side panel against the live free APIs (GreyNoise and CISA KEV are blocked by CORS on localhost only). Add `?demo=1` for the sample data used in the screenshots.
 - `tests/highlight-preview.html`: IOC highlighting on a fake SOC console.
 
 ## Settings / admin policy

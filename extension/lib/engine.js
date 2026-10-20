@@ -277,7 +277,9 @@
   const VERDICT_WORD = { malicious: 'very likely malicious', suspicious: 'suspicious', benign: 'likely benign', unknown: 'unknown (no strong signal)', internal: 'internal' };
 
   function summarize(report, res) {
-    const top = (kind) => res.reasons.filter((r) => r.kind === kind && !/^(Open ports|Network|Resolves|Usage type|File:)/.test(r.t)).slice(0, 2).map((r) => r.t.replace(/\.$/, ''));
+    // Client memory explains a verdict best ("this is Client A's VPN"), so it leads the summary.
+    const top = (kind) => res.reasons.filter((r) => r.kind === kind && !/^(Open ports|Network|Resolves|Usage type|File:)/.test(r.t))
+      .sort((a, b) => (b.src === 'memory') - (a.src === 'memory')).slice(0, 2).map((r) => r.t.replace(/\.$/, ''));
     const why = res.verdict === 'benign' ? top('good') : top('bad');
     let s = `${defangShort(report)} is ${VERDICT_WORD[res.verdict]}`;
     if (why.length) s += ': ' + why.join('; ');

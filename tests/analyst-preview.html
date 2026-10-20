@@ -59,13 +59,17 @@
 <script src="../extension/lib/engine.js"></script>
 <script src="../extension/lib/headers.js"></script>
 <script src="../extension/lib/sources.js"></script>
+<script src="demo-fixtures.js"></script>
 <script>
 (async function () {
   const S = window.VSSources;
   const cfg = { blockedSet: new Set(['evil-feed-demo.example']) };
+  // ?demo=1: sample data through the real engine (for screenshots), no network calls.
+  const DEMO = new URLSearchParams(location.search).has('demo') && window.SOCLENS_DEMO;
+  if (DEMO) await DEMO.seed();
   window.__handle = async (msg) => {
     switch (msg.type) {
-      case 'investigate': return S.investigate(msg.value, cfg);
+      case 'investigate': return DEMO ? DEMO.investigate(msg.value) : S.investigate(msg.value, cfg);
       case 'detonate': return S.detonate(msg.value);
       // "demo-ok" fakes a valid key so the wizard's success path can be tried without a real key.
       case 'testKey': return msg.key === 'demo-ok' ? { ok: true, message: 'Demo key accepted' } : S.testKey(msg.provider, msg.key);
