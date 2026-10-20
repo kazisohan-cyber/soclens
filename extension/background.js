@@ -722,6 +722,7 @@ const handlers = {
   async memoryConfirm(msg) { return VSSources.memoryConfirm(msg.id); },
   async memoryContext(msg) { return VSSources.memoryContext(String(msg.text || '').slice(0, 20000)); },
   async memoryImport(msg) { try { return Object.assign({ ok: true }, await VSSources.memoryImport(msg.items)); } catch (e) { return { ok: false, error: e.message }; } },
+  async memoryUpsert(msg) { try { return Object.assign({ ok: true }, await VSSources.memoryUpsert(msg.entries, msg.defaults)); } catch (e) { return { ok: false, error: e.message }; } },
   async highlightInit(msg, sender) { return { enabled: !!sender.tab && await onAnalystSite(sender.url) }; },
   async quickLook(msg, sender) {
     if (!(await onAnalystSite(sender.url))) return [];
@@ -742,7 +743,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   // Privileged actions only from our own extension pages.
   const fromExtensionPage = sender.url && sender.url.startsWith(chrome.runtime.getURL(''));
   if (['bypass', 'trustSite', 'popupState', 'setConsent', 'verifyState', 'verifyAnswer', 'exportEvents', 'clearCreds', 'flushNow',
-    'detonate', 'testKey', 'analystSettings', 'analystSave', 'memoryList', 'memorySave', 'memoryDelete', 'memoryImport', 'memoryConfirm', 'memoryContext'].includes(msg.type) && !fromExtensionPage) { reply(null); return false; }
+    'detonate', 'testKey', 'analystSettings', 'analystSave', 'memoryList', 'memorySave', 'memoryDelete', 'memoryImport', 'memoryUpsert', 'memoryConfirm', 'memoryContext'].includes(msg.type) && !fromExtensionPage) { reply(null); return false; }
   Promise.resolve(h(msg, sender)).then(reply, (e) => reply({ error: String(e && e.message || e) }));
   return true;
 });

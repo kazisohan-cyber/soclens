@@ -24,3 +24,10 @@ node_modules/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Customer / SIEM / EDR exports: never commit (real client data)
+*.csv
+*.tsv
+*.xlsx
+*.json.export
+exports/

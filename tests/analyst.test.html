@@ -18,6 +18,7 @@
 <script src="../extension/lib/analyzer.js"></script>
 <script src="../extension/lib/ioc.js"></script>
 <script src="../extension/lib/memory.js"></script>
+<script src="../extension/lib/importers.js"></script>
 <script src="../extension/lib/engine.js"></script>
 <script src="../extension/lib/headers.js"></script>
 <script src="../extension/lib/activity.js"></script>
@@ -217,6 +218,44 @@ section('Client memory v2');
   check('internal IP shows the client note', a.verdict === 'internal' && /Backup server/.test(a.summary) && a.reasons.some((r) => r.src === 'memory'), a.summary);
   const note = E.ticketNote([{ report: base, a: E.assess(Object.assign({}, base, { memory: [] })) }], { client: 'Client A', clientContext: [M.describe(list[5])] });
   check('ticket note carries client + client context', /Client: Client A/.test(note.text) && /Client context: Client A: Account svc-backup/.test(note.text));
+}
+
+section('EDR import (SentinelOne CSV, fake data)');
+{
+  const IM = VSImport;
+  const H = '"Status","Threat Details","Confidence Level","Endpoints","Incident Status","Analyst Verdict","Reported Time (UTC)","Identifying Time (UTC)","Detecting Engine","Initiated By","Classification","Agent Version On Detection","Agent Version","Hash","Path","Completed Actions","Pending Actions","Reboot Required","Failed Actions","Policy At Detection","Mitigated Preemptively","External Ticket Id","Account","Site","Group","Originating Process"';
+  const row = (status, name, host, verdict, when, engine, cls, hash, path) =>
+    `"${status}","${name}","Malicious","${host}","Resolved","${verdict}","${when}","${when}","['${engine}']","Agent Policy","${cls}","24.1.2.188","24.1.2.188","${hash}","${path}","['kill']",False,False,False,"protect",False,"","MSSP Demo Account","Client A","Laptops",""`;
+  const threats = [H,
+    row('Marked as benign', '1a2b.rbf', 'ACME-LT01', 'False positive', 'Aug 31, 2026 11:00:57 AM', 'Behavioral AI', 'Ransomware', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '\\Device\\HarddiskVolume3\\Config.Msi\\1a2b.rbf'),
+    row('Marked as benign', '3c4d.rbf', 'ACME-LT02', 'False positive', 'Sep 21, 2026 11:01:09 AM', 'Behavioral AI', 'Ransomware', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', '\\Device\\HarddiskVolume3\\Config.Msi\\3c4d.rbf'),
+    row('Mitigated', 'dropper.exe', 'ACME-LT03', 'True positive', 'Apr 23, 2026 03:59:06 PM', 'SentinelOne Cloud', 'Malware', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb', '\\Device\\HarddiskVolume3\\Users\\demo\\Downloads\\dropper.exe'),
+    row('Mitigated', 'tool.exe', 'ACME-LT04', 'True positive', 'May 01, 2026 10:00:00 AM', 'Behavioral AI', 'Malware', 'cccccccccccccccccccccccccccccccccccccccc', '\\x\\tool.exe'),
+    row('Marked as benign', 'tool.exe', 'ACME-LT05', 'False positive', 'May 02, 2026 10:00:00 AM', 'Behavioral AI', 'Malware', 'cccccccccccccccccccccccccccccccccccccccc', '\\x\\tool.exe')].join('\r\n');
+  let r = IM.importCsv(threats);
+  check('threats export detected', r.type === 'threats' && r.rows === 5, r.type + ' ' + r.rows);
+  const byHash = Object.fromEntries(r.entries.filter((e) => e.kind === 'ioc').map((e) => [e.ioc, e]));
+  check('duplicate false-positive hash -> one benign note ×2', byHash['a'.repeat(40)].verdict === 'benign' && /false positive ×2/.test(byHash['a'.repeat(40)].note), byHash['a'.repeat(40)].note);
+  check('true positive -> malicious', byHash['b'.repeat(40)].verdict === 'malicious');
+  check('mixed verdicts -> note, both counts', byHash['c'.repeat(40)].verdict === 'note' && /mixed analyst verdicts \(1 true positive, 1 false positive\)/.test(byHash['c'.repeat(40)].note), byHash['c'.repeat(40)].note);
+  check('client taken from Site column', r.sites[0] === 'Client A');
+  check('endpoint with a true positive gets a host note', r.entries.some((e) => e.kind === 'host' && e.ioc === 'acme-lt03'));
+
+  const DL = 'Time,Source/Cluster,data.agent.computer_name,data.agent.domain,data.agent.external_ip,data.agent.group.name,data.agent.last_logged_in_user_name,data.agent.network_interfaces,data.agent.os_name,data.site_name,data.user.email,Raw log';
+  const ifaces = '"[{""name"":""Wi-Fi"",""inet4"":[""192.168.50.21""]}, {""name"":""Ethernet"",""inet4"":[""10.20.30.40""]}]"';
+  const datalake = [DL,
+    '19:36:30.081,scalyr-metalog,,,,,,,,,,',
+    `20:52:46.033,,ACME-LT09,ACMELOCAL,198.51.100.77,Laptops,jdoe,${ifaces},Windows 11 Pro,Client A,,`,
+    `21:36:09.310,,,,,,,,,Client A,'analyst@mssp.example,`].join('\n');
+  r = IM.importCsv(datalake);
+  check('Data Lake export detected, rows without agent ignored', r.type === 'datalake' && r.skipped === 2, r.type + ' skipped=' + r.skipped);
+  const find = (k, v) => r.entries.find((e) => e.kind === k && e.ioc === v);
+  check('host note with OS, domain, user, IPs', find('host', 'acme-lt09') && /Windows 11 Pro · domain ACMELOCAL · group Laptops · last user jdoe · egress 198.51.100.77 · LAN 192.168.50.21, 10.20.30.40/.test(find('host', 'acme-lt09').note), find('host', 'acme-lt09') && find('host', 'acme-lt09').note);
+  check('egress IP note (context, not benign)', find('ioc', '198.51.100.77') && find('ioc', '198.51.100.77').verdict === 'note');
+  check('internal IPs map to host, 30 days', find('ioc', '10.20.30.40') && find('ioc', '10.20.30.40').ttlDays === 30 && /ACME-LT09/.test(find('ioc', '10.20.30.40').note));
+  check('MSSP analyst email in activity rows is not imported', !r.entries.some((e) => /mssp\.example/.test(e.ioc)));
+  check('unknown CSV rejected', !!IM.importCsv('a,b\n1,2').error);
+  check('quoted commas + "" escapes parsed', IM.parseCsv('x,"a,b ""c""",y')[0][1] === 'a,b "c"');
 }
 
 section('Recent activity');

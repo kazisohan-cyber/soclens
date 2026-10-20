@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SOCLens – SOC Analyst Assistant & Phishing Protection",
   "short_name": "SOCLens",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Instant verdicts for any IP, domain, URL, hash or CVE, ticket notes, email header analysis, and phishing protection.",
   "author": "OpsVantage",
   "minimum_chrome_version": "116",

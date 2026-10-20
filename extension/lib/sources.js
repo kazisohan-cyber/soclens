@@ -335,6 +335,35 @@
     return { added, updated };
   }
 
+  /**
+   * Bulk import (EDR exports): one note per (client, kind, value). An existing note is updated in place
+   * (newer note text, verdict, validity), so importing a fresher export never creates duplicates.
+   */
+  async function memoryUpsert(entries, defaults) {
+    if (!Array.isArray(entries)) throw new Error('Nothing to import');
+    defaults = defaults || {};
+    const s = await settings();
+    const list = await memoryList();
+    const key = (m) => [String(m.client || '').toLowerCase(), m.kind || 'ioc', String(m.ioc || '').toLowerCase()].join('|');
+    const index = new Map(list.map((m, i) => [key(m), i]));
+    const now = Date.now();
+    let added = 0, updated = 0, rejected = 0;
+    const fresh = [];
+    for (const e of entries.slice(0, 5000)) {
+      let parsed;
+      try { parsed = M.parseKey(e.kind === 'ioc' ? 'auto' : e.kind, e.ioc); } catch (_) { rejected++; continue; }
+      const days = e.ttlDays != null ? Number(e.ttlDays) : defaults.ttlDays != null ? Number(defaults.ttlDays) : 90;
+      const item = M.normalize({ kind: parsed.kind, ioc: parsed.value, client: e.client != null ? e.client : defaults.client, verdict: e.verdict, note: e.note,
+        ticket: e.ticket || defaults.ticket || '', by: defaults.by || s.analyst || 'import', created: now, updated: now, expires: days ? now + days * M.DAY : 0 }, now);
+      const i = index.get(key(item));
+      if (i != null && i >= 0) { item.id = list[i].id; item.created = list[i].created; list[i] = item; updated++; }
+      else if (i == null) { item.id = crypto.randomUUID(); fresh.push(item); index.set(key(item), -1); added++; }
+    }
+    const all = fresh.concat(list).slice(0, 5000);
+    await chrome.storage.local.set({ memory: all });
+    return { added, updated, rejected, total: all.length };
+  }
+
   /** Accounts / hostnames remembered for the active client that appear in pasted text. */
   async function memoryContext(text) {
     const s = await settings();
@@ -500,5 +529,5 @@
     });
   }
 
-  root.VSSources = { DEFAULTS, settings, saveSettings, investigate, detonate, quickLook, testKey, memoryList, memorySave, memoryConfirm, memoryDelete, memoryImport, memoryMatches, memoryContext, sweepCache, src };
+  root.VSSources = { DEFAULTS, settings, saveSettings, investigate, detonate, quickLook, testKey, memoryList, memorySave, memoryConfirm, memoryDelete, memoryImport, memoryUpsert, memoryMatches, memoryContext, sweepCache, src };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

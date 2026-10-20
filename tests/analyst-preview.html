@@ -56,6 +56,7 @@
 <script src="../extension/lib/config.js"></script>
 <script src="../extension/lib/ioc.js"></script>
 <script src="../extension/lib/memory.js"></script>
+<script src="../extension/lib/importers.js"></script>
 <script src="../extension/lib/engine.js"></script>
 <script src="../extension/lib/headers.js"></script>
 <script src="../extension/lib/sources.js"></script>
@@ -80,6 +81,7 @@
       case 'memoryDelete': return S.memoryDelete(msg.id);
       case 'memoryConfirm': return S.memoryConfirm(msg.id);
       case 'memoryContext': return S.memoryContext(msg.text);
+      case 'memoryUpsert': return Object.assign({ ok: true }, await S.memoryUpsert(msg.entries, msg.defaults));
       case 'memoryImport': return Object.assign({ ok: true }, await S.memoryImport(msg.items));
       default: return null;
     }

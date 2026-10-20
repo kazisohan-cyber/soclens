@@ -467,6 +467,49 @@
     }
   }
 
+  // ------------------------------------------------------------ EDR import ---
+  // The CSV is parsed here in the panel; only the notes the analyst ticks are stored.
+  $('edrFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    const box = $('edrReview');
+    box.textContent = '';
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { box.append(h('p', { class: 'err small', text: 'File is larger than 25 MB. Export a shorter time range.' })); return; }
+    const r = window.VSImport.importCsv(await file.text());
+    if (r.error) { box.append(h('p', { class: 'small', style: 'color:var(--block)', text: r.error })); return; }
+    const guess = (settings && settings.activeClient) || r.sites[0] || '';
+    const client = h('input', { type: 'text', value: guess, placeholder: 'Client name for these notes' });
+    const checks = {};
+    const list = h('div', { class: 'small' });
+    for (const [cat, n] of Object.entries(r.counts)) {
+      const cb = h('input', { type: 'checkbox', checked: cat !== 'user' });
+      checks[cat] = cb;
+      list.append(h('label', { class: 'toggle', style: 'margin:4px 0' }, cb, h('span', {}, `${window.VSImport.CATEGORY_LABEL[cat] || cat}: `, h('b', { text: String(n) }))));
+    }
+    const sample = r.entries.slice(0, 4).map((x) => h('li', { text: `${x.kind === 'ioc' ? '' : x.kind + ' '}${x.ioc}: ${x.note.slice(0, 110)}${x.note.length > 110 ? '…' : ''}` }));
+    const status = h('div', { class: 'muted small' });
+    const go = h('button', { class: 'primary', text: 'Save to client memory', onclick: async () => {
+      const chosen = r.entries.filter((x) => checks[x.category] && checks[x.category].checked);
+      if (!chosen.length) { status.textContent = 'Nothing selected.'; return; }
+      const name = client.value.trim().slice(0, 60);
+      go.disabled = true;
+      const res = await send({ type: 'memoryUpsert', entries: chosen.map((x) => Object.assign({}, x, { client: name })), defaults: { client: name, ticket: 'S1 import ' + new Date().toISOString().slice(0, 10) } });
+      go.disabled = false;
+      if (!res || !res.ok) { status.textContent = (res && res.error) || 'Import failed'; return; }
+      status.textContent = `Saved: ${res.added} new, ${res.updated} updated${res.rejected ? `, ${res.rejected} skipped` : ''}.`;
+      if (name && (!settings.activeClient || settings.activeClient !== name)) settings = await send({ type: 'analystSave', patch: { activeClient: name } });
+      await loadClients();
+      loadMemory();
+    } });
+    box.append(h('div', { style: 'margin-top:8px' },
+      h('p', { class: 'small', style: 'margin:0 0 6px' }, h('b', { text: r.label }), ` · ${r.rows} rows${r.skipped ? `, ${r.skipped} without endpoint / hash data ignored` : ''}`),
+      h('label', { class: 'f' }, 'Client', client),
+      list,
+      sample.length ? h('details', {}, h('summary', { text: 'Preview' }), h('ul', { style: 'padding-left:16px;margin:4px 0' }, sample)) : null,
+      h('div', { class: 'row between', style: 'margin-top:6px' }, status, go)));
+  });
+
   // ------------------------------------------------------------ active client ---
   async function loadClients() {
     const list = await send({ type: 'memoryList' });

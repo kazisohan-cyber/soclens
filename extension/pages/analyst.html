@@ -90,6 +90,13 @@
     <datalist id="clientList"></datalist>
     <div class="row between"><span class="muted small" id="mState"></span><button class="primary" id="mSave">Save note</button></div>
   </div>
+  <div class="card compact">
+    <div class="row between">
+      <span><b>Import from your EDR</b><br><span class="muted small">SentinelOne Threats, Endpoints or Data Lake CSV export. Read on this device only; you review before anything is saved.</span></span>
+      <label class="btn" for="edrFile">Choose CSV</label><input id="edrFile" type="file" accept=".csv,text/csv" hidden>
+    </div>
+    <div id="edrReview"></div>
+  </div>
   <div class="row between">
     <input id="mFilter" type="search" placeholder="Search notes" style="flex:1">
     <button id="mExport">Export</button>
@@ -123,6 +130,7 @@
 <script src="../lib/analyzer.js"></script>
 <script src="../lib/ioc.js"></script>
 <script src="../lib/memory.js"></script>
+<script src="../lib/importers.js"></script>
 <script src="../lib/engine.js"></script>
 <script src="../lib/headers.js"></script>
 <script src="analyst.js"></script>
