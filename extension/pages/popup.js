@@ -26,7 +26,7 @@
   const v = s.verdict;
   if (v && v.host) {
     const lvl = v.allow ? 'safe' : v.level;
-    $('lvl').textContent = v.bypassed ? 'Bypassed' : (v.allow ? 'Trusted' : LABEL[lvl] || lvl);
+    $('lvl').textContent = v.bypassed ? 'Bypassed' : v.local ? 'Local network' : (v.allow ? 'Trusted' : LABEL[lvl] || lvl);
     $('lvl').className = 'pill lvl-' + lvl;
     $('host').textContent = v.host;
     for (const r of (v.reasons || []).slice(0, 6)) { const li = document.createElement('li'); li.textContent = r; $('reasons').appendChild(li); }

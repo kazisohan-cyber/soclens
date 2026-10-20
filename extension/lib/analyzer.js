@@ -218,6 +218,18 @@
     return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.startsWith('[') || /^[0-9a-f:]+$/i.test(host) && host.includes(':');
   }
 
+  /** localhost, loopback, RFC 1918 private, link-local and IPv6 unique-local / link-local addresses. */
+  function isLocalHost(host) {
+    const h = String(host || '').toLowerCase().replace(/^\[|\]$/g, '');
+    if (h === 'localhost' || h.endsWith('.localhost')) return true;
+    const o = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (o) {
+      const [a, b] = [Number(o[1]), Number(o[2])];
+      return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254);
+    }
+    return h === '::1' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h);
+  }
+
   function registrableDomain(host) {
     host = (host || '').toLowerCase().replace(/\.$/, '');
     if (!host || isIp(host)) return host;
@@ -347,6 +359,10 @@
     if (hostInList(host, cfg.allowedDomains) || hostInList(host, cfg.corporateDomains)) {
       res.allow = true; return finish(res, cfg);
     }
+
+    // Your own computer and private networks (OAuth loopback callbacks, dev servers, router / NAS admin
+    // pages) are not phishing sites: raw IP, odd port and plain HTTP are normal there.
+    if (isLocalHost(host)) { res.allow = true; res.local = true; return finish(res, cfg); }
 
     const brands = allBrands(cfg.extraBrands);
     const legitBrand = brands.find((b) => isBrandLegit(host, b));

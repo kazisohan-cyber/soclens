@@ -38,7 +38,7 @@ The verdict logic is in `lib/engine.js` (`assess()`): weighted signals → malic
 4. Analyst tools: right-click any selected text → **SOCLens: Investigate**, or toolbar popup → **Analyst panel**.
 
 Tests: serve this folder (`python -m http.server 8765`) and open:
-- `http://localhost:8765/tests/analyzer.test.html`: 53 analyzer cases.
+- `http://localhost:8765/tests/analyzer.test.html`: 58 analyzer cases.
 - `tests/analyst.test.html`: 84 cases for the IOC parser, verdict engine, client memory, ticket notes, header analyzer and activity list.
 - `tests/mock-webmail.html`: email UI.
 - `tests/analyst-preview.html`: the real side panel against the live free APIs. GreyNoise and CISA KEV are blocked by CORS on localhost only.
