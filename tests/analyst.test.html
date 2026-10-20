@@ -49,6 +49,13 @@ hasAll('md5 vs sha1 lengths', 'md5 d41d8cd98f00b204e9800998ecf8427e sha1 da39a3e
 hasAll('CIDR suffix stripped', 'block 203.0.113.0/24 now', ['ipv4:203.0.113.0']);
 hasAll('version numbers are not IPs (4+ parts)', 'build 10.0.19045.3693 and 1.2.3', []);
 check('unique dedupes', I.unique('1.1.1.1 and 1.1.1.1 again').length === 1);
+hasAll('SentinelOne log line: field names are not domains',
+  "21:39:30.050 scalyr-metalog tag='logVolume' site.id='1000000000000000001' data.scope='account' data.user.email: x src.process.name=cmd.exe host.name = web01 from 203.0.113.114",
+  ['ipv4:203.0.113.114']);
+hasAll('JSON keys are not domains', '{"event.type": "login", "user.name": "bob", "dns.question": "evil-c2.net"}', ['domain:evil-c2.net']);
+hasAll('fake TLDs are not domains', 'see config.local and app.internal and data.scope', []);
+hasAll('domain with port still a domain', 'beacon to c2.evil-cdn.net:443 and phish.example.email', ['domain:c2.evil-cdn.net', 'domain:phish.example.email']);
+hasAll('real domain after = is kept', 'dns_query=update-service.top', ['domain:update-service.top']);
 
 section('classify / refang / defang');
 check('classify defanged URL', I.classify('hxxps://bad[.]com/x').type === 'url', JSON.stringify(I.classify('hxxps://bad[.]com/x')));
