@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome to SOCLens</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  main { width: min(680px, 100%); margin: 0 auto; padding: 32px 16px 48px; }
+  header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  header img { width: 40px; height: 40px; }
+  h1 { font-size: 24px; }
+  .lead { font-size: 15px; margin: 4px 0 20px; }
+  .card { margin-bottom: 16px; }
+  h2 { font-size: 15px; margin-bottom: 8px; }
+  ul { margin: 0; padding-left: 20px; } li { margin: 4px 0; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) { .two { grid-template-columns: 1fr; } }
+  .yes h2 { color: var(--ok); } .no h2 { color: var(--block); }
+  label.f { display: block; font-weight: 600; font-size: 13px; }
+  input[type=text] { width: 100%; margin-top: 4px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+  .choices { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+  .choices button { padding: 10px 16px; font-size: 14px; }
+  #result { margin-top: 14px; font-weight: 600; }
+  #result.ok { color: var(--ok); } #result.err { color: var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <header><img src="../icons/icon48.png" alt=""><h1>Welcome to SOCLens</h1></header>
+  <p class="lead">SOCLens is already protecting this browser: it blocks phishing sites, warns on phishing emails in Gmail and Outlook, and stops your password being typed on fake login pages.</p>
+
+  <section class="card" id="localCard">
+    <h2>Private by design</h2>
+    <p class="muted" style="margin:0">Every check runs on this device. SOCLens sends nothing to any server unless you, or your company's admin, connect it to a SOCLens console.</p>
+  </section>
+
+  <section class="card" id="analystCard">
+    <h2>Work in a SOC? Meet the analyst panel</h2>
+    <ul style="margin:6px 0 12px;padding-left:18px">
+      <li>Select any IP, domain, URL, hash or CVE, right-click, <b>SOCLens: Investigate</b>: one verdict from 8 free intel sources</li>
+      <li>One-click ticket notes, email header analysis, safe link detonation, and client memory</li>
+      <li>Add free VirusTotal and AbuseIPDB keys (2 minutes) for known-bad verdicts</li>
+    </ul>
+    <div class="choices"><button class="primary" id="openAnalyst">Open the analyst panel</button><button id="openSettings">Connect to my company's console</button></div>
+  </section>
+
+  <section class="card" id="communityCard" hidden>
+    <h2>Free SOCLens community protection</h2>
+    <p class="muted" style="margin:0 0 10px">Connect to the SOCLens community service to receive a list of new phishing sites (updated four times a day). You can also share what SOCLens blocks, so everyone in the community is protected sooner.</p>
+    <div class="two">
+      <div class="yes">
+        <h2>Sent when you share reports</h2>
+        <ul>
+          <li>Address of a site SOCLens blocked or warned about, or that you reported, bypassed or trusted</li>
+          <li>For a phishing email: sender, subject and the suspicious links</li>
+          <li>Your public IP address, browser type and SOCLens version</li>
+          <li>The nickname below, if you give one</li>
+        </ul>
+      </div>
+      <div class="no">
+        <h2>Never sent</h2>
+        <ul>
+          <li>Your passwords (only a salted hash stays on this device)</li>
+          <li>Email bodies or attachments</li>
+          <li>Your browsing history: normal sites are never reported</li>
+          <li>Anything at all when you choose "Protect only"</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted" style="margin:12px 0 0">Reports are kept for up to 30 days and used only to improve phishing protection. You can change your choice any time from the SOCLens toolbar button.</p>
+  </section>
+
+  <section class="card" id="choiceCard" hidden>
+    <label class="f">Nickname <span class="muted" style="font-weight:400">(optional, so the admin knows whose browser this is)</span>
+      <input type="text" id="nick" maxlength="40" placeholder="e.g. Rafi laptop"></label>
+    <div class="choices">
+      <button class="primary" id="full">Protect me and share reports</button>
+      <button id="off">Protect only (send nothing)</button>
+    </div>
+    <p class="muted" style="margin:10px 0 0;font-size:12px">"Protect only" still downloads the phishing list, so the console sees your IP address when it does.</p>
+    <div id="result" role="status"></div>
+  </section>
+</main>
+<script src="../lib/config.js"></script>
+<script src="welcome.js"></script>
+</body>
+</html>

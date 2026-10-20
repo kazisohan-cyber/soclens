@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOCLens Analyst</title>
+<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="analyst.css">
+</head>
+<body>
+<header class="top">
+  <img src="../icons/icon32.png" alt="">
+  <div class="brand"><b>SOCLens</b> <span>Analyst</span></div>
+  <span class="muted small" id="srcCount"></span>
+</header>
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="investigate" aria-selected="true">Investigate</button>
+  <button role="tab" data-tab="headers">Headers</button>
+  <button role="tab" data-tab="memory">Memory</button>
+  <button role="tab" data-tab="settings">Settings</button>
+</nav>
+
+<!-- ============================================================ Investigate -->
+<section class="tab" id="tab-investigate">
+  <div class="clientbar">
+    <span class="muted small">Client</span>
+    <select id="client" title="Notes for this client (and notes for all clients) are used in verdicts and highlighting"></select>
+  </div>
+  <div class="card compact">
+    <textarea id="q" rows="4" spellcheck="false" placeholder="Paste anything: an IP, domain, URL, hash, CVE, email, or a whole alert / log line. Defanged is fine."></textarea>
+    <input id="ctx" type="text" placeholder="Ticket / alert reference (optional, goes in the note)">
+    <div class="row between">
+      <span class="muted small" id="found">Ctrl+Enter to investigate</span>
+      <button class="primary" id="go">Investigate</button>
+    </div>
+  </div>
+  <div id="wizard" class="card compact wizard" hidden></div>
+
+  <div id="overall" class="card overall" hidden>
+    <div class="row between">
+      <div><span class="pill" id="ovPill"></span> <b id="ovText"></b></div>
+      <span class="muted small" id="ovTime"></span>
+    </div>
+    <div id="ai" class="ai" hidden></div>
+    <div id="clientCtx" class="ctx" hidden></div>
+    <div class="row wrap">
+      <button class="primary" id="copyNote">Copy ticket note</button>
+      <button id="copyMd">Copy Markdown</button>
+      <button id="copyIocs">Copy IOCs (defanged)</button>
+    </div>
+    <div class="muted small" id="copyState"></div>
+  </div>
+  <div id="results"></div>
+</section>
+
+<!-- ============================================================ Headers -->
+<section class="tab" id="tab-headers" hidden>
+  <div class="card compact">
+    <textarea id="hdr" rows="7" spellcheck="false" placeholder="Paste the full email headers (Outlook: File > Properties > Internet headers; Gmail: ⋮ > Show original)."></textarea>
+    <div class="row between"><span class="muted small">Analysed on this device. Nothing is sent anywhere.</span><button class="primary" id="hdrGo">Analyse headers</button></div>
+  </div>
+  <div id="hdrOut"></div>
+</section>
+
+<!-- ============================================================ Memory -->
+<section class="tab" id="tab-memory" hidden>
+  <div class="card compact">
+    <p class="muted small" style="margin:0 0 8px">Teach SOCLens what is normal for each client. Notes show up in verdicts, highlighting and ticket notes. They expire, so stale knowledge is never trusted silently.</p>
+    <div class="grid2">
+      <select id="mKind" title="What kind of thing to remember">
+        <option value="auto">Indicator (IP, CIDR, domain, URL, email, hash)</option>
+        <option value="asn">Network (ASN), e.g. AS62044 Zscaler</option>
+        <option value="country">Country, e.g. BD (staff travel / office)</option>
+        <option value="user">Account, e.g. svc-backup</option>
+        <option value="host">Hostname, e.g. BKP-SRV01</option>
+      </select>
+      <input id="mIoc" type="text" placeholder="Value">
+    </div>
+    <div class="grid2">
+      <input id="mClient" type="text" list="clientList" placeholder="Client (empty = all clients)">
+      <select id="mVerdict"><option value="benign">Benign / expected</option><option value="malicious">Malicious / blocked</option><option value="note">Note only</option></select>
+    </div>
+    <input id="mNote" type="text" placeholder="Why (e.g. Fortinet VPN egress, nightly backup job)" style="margin-bottom:6px">
+    <div class="grid2">
+      <input id="mTicket" type="text" placeholder="Ticket (optional, e.g. INC-4711)">
+      <select id="mTtl" title="After this the note is shown as expired and no longer trusted">
+        <option value="30">Valid 30 days</option><option value="90" selected>Valid 90 days</option><option value="180">Valid 180 days</option><option value="365">Valid 1 year</option><option value="0">Never expires</option>
+      </select>
+    </div>
+    <datalist id="clientList"></datalist>
+    <div class="row between"><span class="muted small" id="mState"></span><button class="primary" id="mSave">Save note</button></div>
+  </div>
+  <div class="row between">
+    <input id="mFilter" type="search" placeholder="Search notes" style="flex:1">
+    <button id="mExport">Export</button>
+    <label class="btn" for="mImportFile">Import</label><input id="mImportFile" type="file" accept="application/json" hidden>
+  </div>
+  <div id="mList"></div>
+</section>
+
+<!-- ============================================================ Settings -->
+<section class="tab" id="tab-settings" hidden>
+  <div class="card compact">
+    <h3>Intel API keys <span class="muted small">(optional, free tiers)</span></h3>
+    <p class="muted small">Keys are stored only in this browser. Lookups go directly from your browser to each service, and only the indicator is sent. Test a key, then <b>Save settings</b> below. <button class="link" id="wizardAgain">Show the setup guide</button></p>
+    <label class="f">VirusTotal <a href="https://www.virustotal.com/gui/join-us" target="_blank" rel="noopener">get free key</a><input type="password" data-key="vt" autocomplete="off"></label>
+    <label class="f">AbuseIPDB <a href="https://www.abuseipdb.com/register" target="_blank" rel="noopener">get free key</a><input type="password" data-key="abuseipdb" autocomplete="off"></label>
+    <label class="f">abuse.ch Auth-Key <span class="muted small">(URLhaus, ThreatFox, MalwareBazaar)</span> <a href="https://auth.abuse.ch/" target="_blank" rel="noopener">get free key</a><input type="password" data-key="abusech" autocomplete="off"></label>
+    <label class="f">urlscan.io <span class="muted small">(safe detonation)</span> <a href="https://urlscan.io/user/signup" target="_blank" rel="noopener">get free key</a><input type="password" data-key="urlscan" autocomplete="off"></label>
+    <label class="f">GreyNoise <span class="muted small">(optional, raises the community limit)</span><input type="password" data-key="greynoise" autocomplete="off"></label>
+  </div>
+  <div class="card compact">
+    <h3>Behaviour</h3>
+    <label class="toggle"><input type="checkbox" id="sPublic"><span><b>Free public sources</b><br><span class="muted small">GreyNoise, Shodan InternetDB, ipinfo, RDAP, DNS, CISA KEV, EPSS, NVD. No key needed.</span></span></label>
+    <label class="toggle"><input type="checkbox" id="sHighlight"><span><b>Highlight IOCs on analyst sites</b><br><span class="muted small">Colours IPs, domains, hashes and CVEs on the sites below using your client memory and past verdicts. Click one to investigate. No lookups run until you click.</span></span></label>
+    <label class="f">Analyst sites <span class="muted small">(one per line, subdomains included)</span><textarea id="sSites" rows="5" spellcheck="false"></textarea></label>
+    <label class="toggle"><input type="checkbox" id="sAi"><span><b>On-device AI summary</b><br><span class="muted small" id="aiState">Uses the browser's built-in model when available. Nothing leaves the device.</span></span></label>
+    <label class="f">Your name on ticket notes<input type="text" id="sName" placeholder="e.g. Arefin (L1)"></label>
+  </div>
+  <div class="row"><button class="primary" id="sSave">Save settings</button><span class="muted small" id="sState"></span></div>
+</section>
+
+<script src="../lib/analyzer.js"></script>
+<script src="../lib/ioc.js"></script>
+<script src="../lib/memory.js"></script>
+<script src="../lib/engine.js"></script>
+<script src="../lib/headers.js"></script>
+<script src="analyst.js"></script>
+</body>
+</html>

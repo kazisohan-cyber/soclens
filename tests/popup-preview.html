@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SOCLens popup preview</title>
+<style>html { background: #e9ecf1; } body { margin: 20px auto !important; box-shadow: 0 0 0 1px #d0d5dd; }</style>
+</head>
+<body>
+<!--
+  Runs the real popup (pages/popup.*) with a chrome.* stand-in and a realistic event log, to check
+  the Recent activity list. Serve the repo root and open /tests/popup-preview.html
+-->
+<script>
+(function () {
+  const now = Date.now(), ago = (min) => new Date(now - min * 60e3).toISOString();
+  const events = [
+    { type: 'page_warned', severity: 'medium', ts: ago(8), host: 'www.abuseipdb.com', url: 'https://www.abuseipdb.com/account', urlDefanged: 'hxxps://www[.]abuseipdb[.]com/account', reasons: ['Asks for a password while mentioning Google'], brand: 'Google' },
+    { type: 'page_warned', severity: 'medium', ts: ago(74), host: 'www.abuseipdb.com', url: 'https://www.abuseipdb.com/account', reasons: ['Asks for a password while mentioning Google'], brand: 'Google' },
+    { type: 'phishing_email_detected', severity: 'high', ts: ago(300), email: { sender: 'it-helpdesk@micros0ft-support.top', subject: 'Your mailbox is full: verify now' }, reasons: ['Sender pretends to be Microsoft'] },
+    { type: 'credential_reuse_blocked', severity: 'critical', ts: ago(900), host: 'docs-share-portal.com', url: 'https://docs-share-portal.com/x', reasons: ['Corporate password typed on a site outside the organisation'] },
+    { type: 'user_bypass', severity: 'medium', ts: ago(1380), host: 'login.microsoftonline.com.example.top', url: 'https://login.microsoftonline.com.example.top/' },
+    { type: 'url_blocked', severity: 'high', ts: ago(1381), host: 'login.microsoftonline.com.example.top', url: 'https://login.microsoftonline.com.example.top/', urlDefanged: 'hxxps://login[.]microsoftonline[.]com[.]example[.]top/', reasons: ['Real brand domain used as a prefix: login.microsoftonline.com', 'High-abuse top-level domain ".top"'], brand: 'Microsoft' }
+  ];
+  const state = { verdict: null, url: '', events, enrolled: 0, queue: 0, lastSync: now, soc: true, tenantId: 'acme-soc', allowBypass: true, credentialGuard: true,
+    version: 'preview', mode: 'managed', reporting: 'full', consent: true, revoked: false, blocklistSize: 32073, blocklistAt: now - 12 * 60e3,
+    pageScanner: true, webmailScanner: true, verifyEnabled: false, loginDomain: 'login.microsoftonline.com', credLearned: null, oldestQueued: 0 };
+  // ?mode=local shows a fresh personal install (no console, no feed); ?stale=1 an unreachable console.
+  const q = new URLSearchParams(location.search);
+  if (q.get('mode') === 'local') Object.assign(state, { mode: 'local', soc: false, reporting: 'off', tenantId: '', blocklistSize: 0, blocklistAt: 0 });
+  if (q.get('stale')) Object.assign(state, { blocklistAt: now - 9 * 3600e3, queue: 7, oldestQueued: now - 3 * 3600e3 });
+  if (q.get('enrolled')) Object.assign(state, { enrolled: 1, credLearned: { host: 'login.microsoftonline.com', ts: now - 864e5 } });
+  const q2 = new URLSearchParams(location.search);
+  window.chrome = {
+    runtime: { getURL: (p) => '../extension/' + p, openOptionsPage() {}, sendMessage: async (m) => m.type === 'popupState' ? state : m.type === 'verifyState' ? { enabled: false, pending: [] } : { ok: true } },
+    tabs: { query: async () => [{ id: 1 }], create() {} }, windows: { getCurrent(cb) { cb({ id: 1 }); } },
+    storage: { session: { set() {} }, local: { get: async () => (q2.get('keys') ? { analyst: { keys: { vt: 'x', abuseipdb: 'y' } } } : {}) } }
+  };
+})();
+</script>
+<script>
+(async function () {
+  const html = await (await fetch('../extension/pages/popup.html')).text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  for (const l of doc.querySelectorAll('link[rel=stylesheet]')) { const n = document.createElement('link'); n.rel = 'stylesheet'; n.href = '../extension/pages/' + l.getAttribute('href'); document.head.append(n); }
+  for (const st of doc.querySelectorAll('style')) document.head.append(st.cloneNode(true));
+  const scripts = [...doc.querySelectorAll('script')].map((s) => s.getAttribute('src'));
+  doc.querySelectorAll('script').forEach((s) => s.remove());
+  doc.querySelectorAll('img[src^="../"]').forEach((i) => i.setAttribute('src', '../extension/' + i.getAttribute('src').slice(3)));
+  document.body.append(...doc.body.childNodes);
+  for (const src of scripts) await new Promise((res) => { const s = document.createElement('script'); s.src = '../extension/pages/' + src; s.onload = res; s.onerror = res; document.body.append(s); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Verify queue</h1>
+<form class="filters" method="get">
+  <select name="tenant"><option value="">All tenants</option>{% for t in tenants %}<option {{ 'selected' if t == tenant }}>{{ t }}</option>{% endfor %}</select>
+  <select name="verdict"><option value="">All verdicts</option>{% for v in verdicts %}<option {{ 'selected' if v == verdict }}>{{ v }}</option>{% endfor %}</select>
+  <button>Filter</button>
+</form>
+<h2>Waiting for “Was this you?” ({{ pending|length }})</h2>
+{% if pending %}
+<div class="scroll"><table>
+<tr><th>Tenant</th><th>User</th><th>Prompt</th><th>Delivered</th><th>Expires in</th><th></th></tr>
+{% for vr in pending %}
+<tr><td>{{ vr.tenant_id }}</td><td>{{ vr.upn }}</td><td>{{ vr.prompt }}</td>
+<td>{% if vr.delivered_at %}yes ({{ (vr.delivered_to or [])|length }} browser(s)){% else %}not yet{% endif %}</td>
+<td>{{ ((vr.expires_at - now).total_seconds() // 60)|int }} min</td><td><a href="/alerts/{{ vr.alert_id }}">Evidence</a></td></tr>
+{% endfor %}
+</table></div>
+{% else %}<p class="muted">Nothing waiting.</p>{% endif %}
+<h2>Recent identity alerts</h2>
+<div class="scroll"><table>
+<tr><th>Received</th><th>Tenant</th><th>User</th><th>Sign-in</th><th>IP</th><th>App</th><th>Verdict</th><th>Status</th><th>Analyst</th></tr>
+{% for a in alerts %}
+<tr><td>{{ a.received_at.strftime('%m-%d %H:%M') }}</td><td>{{ a.tenant_id }}</td><td>{{ a.upn }}</td>
+<td>{{ a.ts.strftime('%m-%d %H:%M') }}</td><td>{{ a.ip or '–' }}</td><td>{{ a.app or '–' }}</td>
+<td><a href="/alerts/{{ a.id }}"><span class="pill" style="background:{{ VERDICT_COLORS.get(a.verdict, '#0969da') }}">{{ a.verdict or a.status }}</span></a></td>
+<td>{{ a.status }}</td><td>{{ a.analyst_feedback or '' }}</td></tr>
+{% else %}<tr><td colspan="9" class="muted">No alerts.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

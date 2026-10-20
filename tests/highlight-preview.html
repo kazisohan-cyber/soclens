@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOCLens highlight preview (fake SOC console)</title>
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 900px; }
+  table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+  .app { border: 1px solid #ccd; border-radius: 8px; padding: 12px; }
+</style>
+</head>
+<body>
+<!--
+  Fake Securonix-style incident page to test content/ioc-highlight.js outside the extension.
+  The chrome.* stand-in marks this host as an analyst site and answers quickLook from client memory
+  and the demo phishing feed. Serve the repo root and open /tests/highlight-preview.html
+-->
+<h1>INC-4711 · Suspicious sign-in followed by phishing click</h1>
+<div class="app" id="app">
+  <p>User <b>bob@clienta.com</b> signed in from 203.0.113.77 (Client A VPN) and later from 185.220.101.4.</p>
+  <table>
+    <tr><th>Time</th><th>Indicator</th><th>Detail</th></tr>
+    <tr><td>10:02:33</td><td>hxxps://micros0ft-login[.]top/auth</td><td>clicked from Outlook</td></tr>
+    <tr><td>10:03:10</td><td>evil-feed-demo.top</td><td>DNS query from 10.0.0.5</td></tr>
+    <tr><td>10:04:00</td><td>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</td><td>invoice.pdf.exe dropped</td></tr>
+    <tr><td>10:05:00</td><td>CVE-2024-3400</td><td>firewall version 10.2.9</td></tr>
+  </table>
+  <p id="later"></p>
+</div>
+<script>
+(function () {
+  const local = { analyst: { highlight: true, highlightSites: ['localhost'] } };
+  const listeners = [];
+  window.__msgs = [];
+  window.chrome = {
+    storage: { local: { get: async (k) => { const o = {}; for (const x of [].concat(k)) if (x in local) o[x] = local[x]; return o; } }, onChanged: { addListener: (f) => listeners.push(f) } },
+    runtime: { sendMessage: async (msg) => {
+      window.__msgs.push(msg.type);
+      if (msg.type === 'quickLook') return msg.values.map((v) => ({ value: v.value,
+        state: v.value === '203.0.113.77' ? 'benign' : v.value === 'evil-feed-demo.top' ? 'malicious' : v.value === '10.0.0.5' ? 'internal' : '',
+        note: v.value === '203.0.113.77' ? 'Client A: Fortinet VPN egress' : v.value === 'evil-feed-demo.top' ? 'In SOCLens phishing feed' : '' }));
+      if (msg.type === 'investigate') return { a: { verdict: 'suspicious', confidence: 'medium', summary: 'Demo verdict for ' + msg.value, reasons: [{ t: 'Demo reason', kind: 'bad' }] } };
+      return null;
+    } }
+  };
+})();
+</script>
+<script src="../extension/lib/ioc.js"></script>
+<script src="../extension/content/ioc-highlight.js"></script>
+<script>setTimeout(() => { document.getElementById('later').textContent = 'Late SPA update: beacon to 45.155.205.233 observed.'; }, 1500);</script>
+</body>
+</html>

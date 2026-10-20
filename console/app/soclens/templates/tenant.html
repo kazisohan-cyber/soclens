@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>{{ t.name }} <small>{{ t.id }}</small></h1>
+{% if new_key %}<div class="card keybox"><b>API key (shown once, copy it now):</b><code>{{ new_key }}</code>
+<p class="muted">Push it to browsers with policy <code>apiKey</code> and <code>tenantId = {{ t.id }}</code>. The SIEM alert webhook uses the same key.</p></div>{% endif %}
+{% if saved %}<p class="ok">Saved.</p>{% endif %}
+<div class="cols">
+{% if can_admin %}
+<form method="post" action="/tenants/{{ t.id }}/settings" class="card settings">
+  <h3>Settings</h3>
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Name <input name="name" value="{{ t.name }}"></label>
+  <label>Verify timeout (min) <input name="verify_timeout_min" type="number" min="1" value="{{ settings.verify_timeout_min }}"></label>
+  <label>Max prompts per user per day <input name="max_prompts_per_user_per_day" type="number" min="0" value="{{ settings.max_prompts_per_user_per_day }}"></label>
+  <label>Expected users (for coverage; 0 = users seen) <input name="expected_users" type="number" min="0" value="{{ settings.expected_users }}"></label>
+  <h4>HaloPSA write-back</h4>
+  <label>Base URL <input name="halo_base_url" value="{{ settings.halo_base_url }}" placeholder="https://clienta.halopsa.com"></label>
+  <label>Auth URL (blank = base/auth/token) <input name="halo_auth_url" value="{{ settings.halo_auth_url }}"></label>
+  <label>Halo tenant (hosted only) <input name="halo_tenant" value="{{ settings.halo_tenant }}"></label>
+  <label>Client ID <input name="halo_client_id" value="{{ settings.halo_client_id }}"></label>
+  <label>Client secret {% if settings.halo_client_secret %}(set; blank keeps it){% endif %} <input name="halo_client_secret" type="password" autocomplete="off"></label>
+  <label>Action outcome <input name="halo_outcome" value="{{ settings.halo_outcome }}"></label>
+  <h4>Generic webhook</h4>
+  <label>URL <input name="webhook_url" value="{{ settings.webhook_url }}"></label>
+  <label>HMAC secret {% if settings.webhook_secret %}(set; blank keeps it){% endif %} <input name="webhook_secret" type="password" autocomplete="off"></label>
+  <h4>Threat feeds</h4>
+  {% macro yesno(name) %}<select name="{{ name }}"><option value="true" {{ 'selected' if settings[name] in (true, 'true', 'True') }}>On</option><option value="false" {{ 'selected' if settings[name] not in (true, 'true', 'True') }}>Off</option></select>{% endmacro %}
+  <label>Add public phishing feeds to this tenant's blocklist {{ yesno('threat_feeds') }}</label>
+  <h4>Extension policy <small class="muted">(pushed to browsers every 15 min)</small></h4>
+  <label>Warn score <input name="ext_warn_threshold" type="number" min="1" max="99" value="{{ settings.ext_warn_threshold }}"></label>
+  <label>Block score <input name="ext_block_threshold" type="number" min="2" max="100" value="{{ settings.ext_block_threshold }}"></label>
+  <label>Users may bypass a block {{ yesno('ext_allow_bypass') }}</label>
+  <label>Credential guard {{ yesno('ext_credential_guard') }}</label>
+  <label>Webmail scanner {{ yesno('ext_webmail_scanner') }}</label>
+  <label>Page scanner {{ yesno('ext_page_scanner') }}</label>
+  <label>Domain age lookup {{ yesno('ext_domain_age') }}</label>
+  <label>Verify: record sign-ins + heartbeat (only with a SIEM sending identity alerts) {{ yesno('ext_verify') }}</label>
+  {% macro sev(name) %}<select name="{{ name }}">{% for s in ['critical', 'high', 'medium', 'low'] %}<option {{ 'selected' if settings[name] == s }}>{{ s }}</option>{% endfor %}</select>{% endmacro %}
+  {% macro secret(name, label) %}<label>{{ label }} {% if settings[name] %}(set; blank keeps it, "-" clears){% endif %} <input name="{{ name }}" type="password" autocomplete="off"></label>{% endmacro %}
+  <h4>Notifications <small class="muted">(serious browser events, in real time)</small></h4>
+  <label>Notify from severity {{ sev('notify_min_severity') }}</label>
+  {{ secret('notify_telegram_bot_token', 'Telegram bot token') }}
+  <label>Telegram chat ID <input name="notify_telegram_chat_id" value="{{ settings.notify_telegram_chat_id }}" placeholder="-1001234567890"></label>
+  <label>Webhook URL (Teams / Slack / SOAR) <input name="notify_webhook_url" value="{{ settings.notify_webhook_url }}"></label>
+  {{ secret('notify_webhook_secret', 'Webhook HMAC secret') }}
+  <h4>SIEM export <small class="muted">(also pull: GET /v1/events with the tenant key)</small></h4>
+  <label>Export from severity {{ sev('siem_min_severity') }}</label>
+  <label>JSON webhook URL <input name="siem_webhook_url" value="{{ settings.siem_webhook_url }}"></label>
+  {{ secret('siem_webhook_secret', 'Webhook HMAC secret') }}
+  <label>Syslog (CEF) target <input name="siem_syslog" value="{{ settings.siem_syslog }}" placeholder="udp://siem.example.com:514"></label>
+  <button>Save</button>
+</form>
+{% endif %}
+<aside>
+  {% if can_admin %}
+  <form method="post" action="/tenants/{{ t.id }}/rotate-key" class="card" onsubmit="return confirm('Rotate the key? Browsers and SIEM webhooks using the old key stop working.')">
+    <h3>API key</h3><p>Current key ends …{{ t.api_key_hint }}</p>
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button class="secondary">Rotate key</button>
+  </form>
+  {% endif %}
+  {% if can_admin %}
+  <form method="post" action="/tenants/{{ t.id }}/test-channels" class="card">
+    <h3>Notifications &amp; SIEM</h3>
+    <p class="muted">Sends one fake critical event to every configured channel.</p>
+    {% if test_results %}<ul>{% for r in test_results %}<li class="{{ 'err' if 'FAILED' in r else 'ok' }}">{{ r }}</li>{% endfor %}</ul>{% endif %}
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button class="secondary">Send test</button>
+  </form>
+  {% endif %}
+  <section class="card">
+    <h3>Threat feeds</h3>
+    <p>{{ '{:,}'.format(feed_total) }} feed domains · {{ 'on' if settings.threat_feeds in (true, 'true', 'True') else 'off' }} for this tenant</p>
+    {% if feed_run %}<p class="muted">Last sync {{ feed_run.started_at.strftime('%Y-%m-%d %H:%M') }} UTC: <b class="{{ 'bad' if feed_run.status == 'failed' else '' }}">{{ feed_run.status }}</b>
+    {% if feed_run.stats.added is defined %} · +{{ feed_run.stats.added }} new, {{ feed_run.stats.expired }} expired{% endif %}
+    {% if feed_run.stats.error %}<br>{{ feed_run.stats.error }}{% endif %}
+    {% for name, s in (feed_run.stats.sources or {}).items() %}<br>{{ name }}: {% if s.error %}<span class="bad">{{ s.error }}</span>{% else %}{{ s.kept }} kept, {{ s.filtered }} filtered{% endif %}{% endfor %}</p>
+    {% else %}<p class="muted">No sync yet. It runs at 00:00, 06:00, 12:00 and 18:00 (UTC+8).</p>{% endif %}
+  </section>
+  <section class="card">
+    <h3>Blocklist ({{ blocklist|length }})</h3>
+    <form method="post" action="/tenants/{{ t.id }}/blocklist" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input name="domain" placeholder="evil.example" required><button name="op" value="add">Add</button>
+    </form>
+    {% for b in blocklist %}
+    <form method="post" action="/tenants/{{ t.id }}/blocklist" class="inline row">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="domain" value="{{ b.domain }}">
+      <span>{{ b.domain }}</span><button name="op" value="remove" class="link">remove</button>
+    </form>
+    {% endfor %}
+  </section>
+</aside>
+</div>
+<h2>Browsers ({{ installs|length }})</h2>
+<div class="scroll"><table>
+<tr><th>Install</th><th>Nickname</th><th>Bound UPN</th><th>Source</th><th>Other accounts</th><th>Reports</th><th>Events</th><th>Last seen</th><th>Last IP</th><th>Version</th><th></th></tr>
+{% for i in installs %}{% set e = enrolled.get(i.install_id) %}<tr><td><code>{{ i.install_id[:8] }}</code></td><td>{{ e.nickname if e and e.nickname else '' }}</td><td>{{ i.upn or '–' }}</td><td>{{ i.upn_source or '' }}</td><td>{{ (i.accounts or [])|reject('equalto', i.upn)|join(', ') }}</td>
+<td>{{ ('on' if e.reporting == 'full' else 'off') if e else 'on' }}</td><td>{{ ev_counts.get(i.install_id, 0) }}</td><td>{{ i.last_seen.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ i.last_ip or '' }}</td><td>{{ i.version or '' }}</td>
+<td>{% if e and e.revoked_at %}<span class="bad">revoked</span>{% elif e and can_admin %}<form method="post" action="/tenants/{{ t.id }}/installs/{{ i.install_id }}/revoke" class="inline" onsubmit="return confirm('Revoke this browser? It stops reporting and stops receiving the blocklist.')"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">revoke</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="11" class="muted">No browsers yet.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

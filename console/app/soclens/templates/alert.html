@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block body %}
+<p><a href="/queue?tenant={{ a.tenant_id }}">← Queue</a></p>
+<h1>Evidence Card <small>{{ a.tenant_id }} · {{ a.source }} {{ a.external_id or '' }}</small></h1>
+<div class="cols">
+<section class="card evidence">{{ (a.card_html or '<p>Not rendered yet.</p>')|safe }}</section>
+<aside>
+  <section class="card">
+    <h3>Analyst review (shadow mode)</h3>
+    {% if a.analyst_feedback %}<p>{{ a.analyst_user }}: <b>{{ a.analyst_feedback }}</b>{% if a.analyst_note %}: {{ a.analyst_note }}{% endif %}</p>{% endif %}
+    {% if user.role in ('mssp_admin', 'analyst') %}
+    <form method="post" action="/alerts/{{ a.id }}/feedback">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <textarea name="note" placeholder="Note (optional)"></textarea>
+      <button name="feedback" value="agree">Agree with verdict</button>
+      <button name="feedback" value="disagree" class="secondary">Disagree</button>
+    </form>
+    {% endif %}
+  </section>
+  <section class="card">
+    <h3>Verify requests</h3>
+    {% for vr in vrs %}<p>{{ vr.created_at.strftime('%H:%M:%S') }} · <b>{{ vr.status }}</b>{% if vr.answer %} · answer {{ vr.answer }} from {{ vr.answered_by_install }}{% endif %}</p>{% else %}<p class="muted">None</p>{% endfor %}
+  </section>
+  <section class="card">
+    <h3>Verdict history</h3>
+    {% for h in history %}<p>{{ h.created_at.strftime('%H:%M:%S') }} · <b>{{ h.verdict }}</b> {{ h.confidence or '' }}<br><small>{{ h.reason }}</small></p>{% else %}<p class="muted">None</p>{% endfor %}
+  </section>
+  <section class="card">
+    <h3>Write-back</h3>
+    {% for w in wbs %}<p>{{ w.target }} · {{ w.verdict }} · <b>{{ w.status }}</b> ({{ w.attempts }} tries){% if w.last_error %}<br><small class="err">{{ w.last_error }}</small>{% endif %}</p>{% else %}<p class="muted">No targets configured for this tenant / ticket.</p>{% endfor %}
+  </section>
+</aside>
+</div>
+{% endblock %}

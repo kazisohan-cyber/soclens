@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOCLens Settings</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  main { width: min(760px, 100%); margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+  header img { width: 32px; height: 32px; }
+  h1 { font-size: 22px; }
+  .card { margin-bottom: 16px; }
+  h2 { font-size: 15px; margin-bottom: 4px; }
+  .card > p { margin: 0 0 12px; }
+  label.f { display: block; margin: 12px 0 0; font-weight: 600; font-size: 13px; }
+  .hint { font-weight: 400; color: var(--muted); font-size: 12px; }
+  input[type=text], input[type=url], input[type=password], input[type=number], textarea {
+    width: 100%; margin-top: 4px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+  textarea { min-height: 64px; font: 12px/1.45 ui-monospace, Consolas, monospace; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+  .toggle { display: flex; gap: 10px; align-items: flex-start; margin: 10px 0; }
+  .toggle input { margin-top: 3px; }
+  .locked { font-size: 11px; color: var(--warn); margin-left: 6px; font-weight: 600; }
+  #status { margin-left: 8px; }
+  .bar { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <header><img src="../icons/icon48.png" alt=""><h1>SOCLens settings</h1></header>
+  <p class="muted" id="managedNote" hidden>Some settings are managed by your organisation or the SOCLens console and cannot be changed here.</p>
+
+  <section class="card">
+    <h2>Protection</h2>
+    <label class="toggle"><input type="checkbox" data-k="pageScanner"><span><b>Phishing site blocking</b><br><span class="hint">Checks every site you open and every login page for impersonation.</span></span></label>
+    <label class="toggle"><input type="checkbox" data-k="webmailScanner"><span><b>Email scanner</b><br><span class="hint">Gmail and Outlook on the web: warns on phishing emails and disables dangerous links. Email content never leaves your browser.</span></span></label>
+    <label class="toggle"><input type="checkbox" data-k="credentialGuard"><span><b>Credential guard</b><br><span class="hint">Learns your work password (as a salted hash, stored only on this device) when you sign in on a work login page, then stops it being typed anywhere else.</span></span></label>
+    <label class="toggle"><input type="checkbox" data-k="domainAgeLookup"><span><b>Domain age check</b><br><span class="hint">For already-suspicious sites only, looks up the registration date via rdap.org.</span></span></label>
+    <label class="toggle"><input type="checkbox" data-k="allowUserBypass"><span><b>Allow bypass</b><br><span class="hint">Lets users continue past a block or trust a site (always reported).</span></span></label>
+    <div class="grid">
+      <label class="f">Warn at score <input type="number" min="1" max="100" data-k="warnThreshold"></label>
+      <label class="f">Block at score <input type="number" min="1" max="100" data-k="blockThreshold"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Domains</h2>
+    <p class="muted">One domain per line. Subdomains are included automatically.</p>
+    <label class="f">Corporate domains <span class="hint">— your organisation's own domains</span><textarea data-k="corporateDomains" data-list></textarea></label>
+    <label class="f">Corporate login pages <span class="hint">— where your work password is learned (ADFS, Okta, VPN portal…)</span><textarea data-k="corporateLoginDomains" data-list></textarea></label>
+    <div class="grid">
+      <label class="f">Always allow<textarea data-k="allowedDomains" data-list></textarea></label>
+      <label class="f">Always block<textarea data-k="blockedDomains" data-list></textarea></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>SOC connection</h2>
+    <p class="muted">Send alerts to your security team and receive their blocklist.</p>
+    <p class="muted" id="modeNote"></p>
+    <label class="f">API endpoint <input type="url" data-k="apiEndpoint" placeholder="https://shield.example.com"></label>
+    <div class="grid">
+      <label class="f">Tenant ID <input type="text" data-k="tenantId"></label>
+      <label class="f">User / device label <input type="text" data-k="userId"></label>
+    </div>
+    <label class="f">API key <input type="password" data-k="apiKey" autocomplete="off"></label>
+    <label class="f">Community server <span class="hint">(optional: a self-enrolling SOCLens community console, https only. Leave empty to keep everything on this device.)</span><input type="url" data-k="communityEndpoint" placeholder="https://soclens.example.org"></label>
+    <div class="row" style="margin-top:12px"><button id="sync">Send events &amp; sync blocklist now</button><span class="muted" id="syncState"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>Credential guard data</h2>
+    <p class="muted" id="credState">—</p>
+    <div class="row"><button id="clearCreds">Forget learned password</button></div>
+  </section>
+
+  <section class="card">
+    <h2>Activity log</h2>
+    <p class="muted" id="evState">—</p>
+    <div class="row"><button id="export">Export log (JSON)</button></div>
+  </section>
+
+  <div class="bar row"><button class="primary" id="save">Save settings</button><span class="muted" id="status"></span></div>
+</main>
+<script src="../lib/config.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOCLens analyst tests</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, Consolas, monospace; margin: 16px; background: #fff; color: #111; }
+  .pass { color: #067647; } .fail { color: #b42318; font-weight: 700; }
+  h1 { font: 700 16px system-ui; } h2 { font: 700 13px system-ui; margin: 14px 0 4px; }
+  #summary { font: 700 15px system-ui; margin: 8px 0 16px; }
+  pre.note { background: #f6f7f9; padding: 8px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>SOCLens analyst tests (IOC parser, verdict engine, ticket notes, email headers)</h1>
+<div id="summary"></div>
+<div id="out"></div>
+<script src="../extension/lib/analyzer.js"></script>
+<script src="../extension/lib/ioc.js"></script>
+<script src="../extension/lib/memory.js"></script>
+<script src="../extension/lib/engine.js"></script>
+<script src="../extension/lib/headers.js"></script>
+<script src="../extension/lib/activity.js"></script>
+<script>
+const I = VSIoc, E = VSEngine, HD = VSHeaders;
+let pass = 0, fail = 0, html = '';
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+function section(t) { html += `<h2>${esc(t)}</h2>`; }
+function check(name, cond, detail) {
+  cond ? pass++ : fail++;
+  html += `<div><span class="${cond ? 'pass' : 'fail'}">${cond ? 'PASS' : 'FAIL'}</span> ${esc(name)}${detail ? '  — ' + esc(detail) : ''}</div>`;
+}
+const vals = (t, o) => I.extract(t, o).map((x) => x.type + ':' + x.value);
+function hasAll(name, text, expected, opts) {
+  const got = vals(text, opts);
+  check(name, expected.every((e) => got.includes(e)) && got.length === expected.length, got.join(' | '));
+}
+
+section('IOC extraction');
+hasAll('fanged mix', 'Alert: user bob@clienta.com from 45.155.205.233 hit https://evil-login.top/auth?x=1 (sha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855) CVE-2024-3400',
+  ['email:bob@clienta.com', 'ipv4:45.155.205.233', 'url:https://evil-login.top/auth?x=1', 'sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'cve:CVE-2024-3400']);
+hasAll('defanged forms', 'hxxps://micros0ft-support[.]com/login and 185[.]220[.]101[.]4 and evil(.)example[.]net',
+  ['url:https://micros0ft-support.com/login', 'ipv4:185.220.101.4', 'domain:evil.example.net']);
+hasAll('ipv6 + not times/MACs', 'src 2001:db8::1 at 10:02:33 mac aa:bb:cc:dd:ee:ff', ['ipv6:2001:db8::1']);
+hasAll('URL trailing punctuation', 'See (https://example.com/a_(b)).', ['url:https://example.com/a_(b)']);
+hasAll('strict: file names are not domains', 'opened invoice.pdf and run.ps1 then contacted bad-cdn.xyz and www.report.zip', ['domain:bad-cdn.xyz', 'domain:www.report.zip'], { strict: true });
+hasAll('md5 vs sha1 lengths', 'md5 d41d8cd98f00b204e9800998ecf8427e sha1 da39a3ee5e6b4b0d3255bfef95601890afd80709',
+  ['md5:d41d8cd98f00b204e9800998ecf8427e', 'sha1:da39a3ee5e6b4b0d3255bfef95601890afd80709']);
+hasAll('CIDR suffix stripped', 'block 203.0.113.0/24 now', ['ipv4:203.0.113.0']);
+hasAll('version numbers are not IPs (4+ parts)', 'build 10.0.19045.3693 and 1.2.3', []);
+check('unique dedupes', I.unique('1.1.1.1 and 1.1.1.1 again').length === 1);
+
+section('classify / refang / defang');
+check('classify defanged URL', I.classify('hxxps://bad[.]com/x').type === 'url', JSON.stringify(I.classify('hxxps://bad[.]com/x')));
+check('classify domain', I.classify('Example.COM').value === 'example.com');
+check('classify hash', I.classify('E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855').type === 'sha256');
+check('classify cve', I.classify('cve-2021-44228').value === 'CVE-2021-44228');
+check('classify unknown', I.classify('hello world').type === 'unknown');
+check('defang url', I.defang('https://a.b.com/x.y', 'url') === 'hxxps[://]a[.]b[.]com/x.y', I.defang('https://a.b.com/x.y', 'url'));
+check('defang ip', I.defang('8.8.8.8', 'ipv4') === '8[.]8[.]8[.]8');
+check('defang email', I.defang('a.b@x.co.uk', 'email') === 'a.b[@]x[.]co[.]uk', I.defang('a.b@x.co.uk', 'email'));
+check('refang roundtrip', I.refang(I.defang('https://a.b.com/x', 'url')) === 'https://a.b.com/x', I.refang(I.defang('https://a.b.com/x', 'url')));
+
+section('private IPs / CIDR');
+for (const ip of ['10.1.2.3', '172.20.0.1', '192.168.1.1', '127.0.0.1', '100.64.1.1', '169.254.1.1', 'fd00::1', 'fe80::1']) check('private ' + ip, I.isPrivateIp(ip));
+for (const ip of ['8.8.8.8', '45.155.205.233', '172.32.0.1', '2001:4860:4860::8888']) check('public ' + ip, !I.isPrivateIp(ip));
+check('cidr match', I.ipInCidr('203.0.113.77', '203.0.113.0/24'));
+check('cidr miss', !I.ipInCidr('203.0.114.1', '203.0.113.0/24'));
+
+section('Verdict engine');
+const ipMal = { type: 'ipv4', group: 'ip', value: '45.155.205.233', memory: [], local: {}, sources: {
+  abuseipdb: { status: 'ok', data: { score: 100, reports: 812, usage: 'Data Center/Web Hosting/Transit' } },
+  greynoise: { status: 'ok', data: { noise: true, riot: false, classification: 'malicious', name: 'unknown' } },
+  internetdb: { status: 'ok', data: { ports: [22, 80], tags: [], vulns: [] } },
+  vt: { status: 'nokey' } } };
+let a = E.assess(ipMal);
+check('malicious IP', a.verdict === 'malicious' && a.confidence === 'high', `${a.verdict} ${a.confidence} ${a.score}`);
+check('summary names the evidence', /AbuseIPDB/.test(a.summary) && /Next:/.test(a.summary), a.summary);
+
+const ipRiot = { type: 'ipv4', group: 'ip', value: '8.8.8.8', memory: [], local: {}, sources: {
+  greynoise: { status: 'ok', data: { riot: true, name: 'Google Public DNS' } }, abuseipdb: { status: 'ok', data: { score: 0, reports: 0, whitelisted: true } },
+  ipinfo: { status: 'ok', data: { org: 'AS15169 Google LLC', country: 'US' } } } };
+a = E.assess(ipRiot);
+check('benign business IP', a.verdict === 'benign', `${a.verdict} ${a.confidence} ${a.score}`);
+
+a = E.assess({ type: 'ipv4', group: 'ip', value: '8.8.8.8', memory: [], local: {}, sources: { internetdb: { status: 'ok', data: { hostnames: ['dns.google'], ports: [53, 443], tags: [], vulns: [] } } } });
+check('Google DNS known without any key', a.verdict === 'benign', `${a.verdict} ${a.summary}`);
+a = E.assess({ type: 'email', group: 'email', value: 'ceo.office@gmail.com', memory: [], local: {}, sources: {} });
+check('free webmail flagged', a.reasons.some((r) => /Free webmail/.test(r.t)));
+
+a = E.assess({ type: 'ipv4', group: 'ip', value: '185.220.101.4', memory: [], local: {}, sources: {
+  internetdb: { status: 'ok', data: { hostnames: ['berlin01.tor-exit.artikel10.org'], ports: [80, 443, 9001], tags: ['self-signed', 'tor'], vulns: [] } },
+  abuseipdb: { status: 'ok', data: { score: 0, reports: 0, tor: true } } } });
+check('Tor exit -> suspicious, counted once', a.verdict === 'suspicious' && a.reasons.filter((r) => /Tor exit/.test(r.t)).length === 1, `${a.verdict} ${a.score}`);
+
+const ipUnknown = { type: 'ipv4', group: 'ip', value: '198.51.100.20', memory: [], local: {}, sources: { greynoise: { status: 'notfound' }, internetdb: { status: 'notfound' } } };
+a = E.assess(ipUnknown);
+check('no data -> unknown', a.verdict === 'unknown', `${a.verdict} ${a.confidence}`);
+
+const internal = { type: 'ipv4', group: 'ip', value: '10.0.0.5', internal: true, memory: [], local: {}, sources: {} };
+check('internal IP', E.assess(internal).verdict === 'internal');
+
+const memBenign = Object.assign({}, ipUnknown, { memory: [{ client: 'Client A', verdict: 'benign', note: 'Fortinet VPN egress', updated: 1 }] });
+a = E.assess(memBenign);
+check('client memory marks benign', a.verdict === 'benign' && a.confidence === 'high', `${a.verdict} ${a.summary}`);
+const memConflict = Object.assign({}, ipMal, { memory: [{ client: 'Client A', verdict: 'benign', note: 'partner', updated: 1 }] });
+a = E.assess(memConflict);
+check('memory benign vs strong intel -> stays malicious, flags conflict', a.verdict === 'malicious' && a.reasons.some((r) => /re-check the note/.test(r.t)), a.verdict);
+
+const phish = { type: 'domain', group: 'domain', value: 'micros0ft-login.top', memory: [], sources: { rdap: { status: 'ok', data: { ageDays: 3 } }, dns: { status: 'ok', data: { nx: false, a: ['1.2.3.4'] } } },
+  local: { analyzer: VSAnalyzer.analyzeUrl('https://micros0ft-login.top/', {}) } };
+a = E.assess(phish);
+check('lookalike new domain -> malicious', a.verdict === 'malicious', `${a.verdict} ${a.score} | ${a.reasons.map((r) => r.t).join('; ')}`);
+const legit = { type: 'domain', group: 'domain', value: 'login.microsoftonline.com', memory: [], sources: { rdap: { status: 'ok', data: { ageDays: 9000 } } },
+  local: { analyzer: VSAnalyzer.analyzeUrl('https://login.microsoftonline.com/', {}) } };
+a = E.assess(legit);
+check('official Microsoft domain -> benign', a.verdict === 'benign', `${a.verdict} ${a.score}`);
+
+const hashMal = { type: 'sha256', group: 'hash', value: 'a'.repeat(64), memory: [], local: {}, sources: { vt: { status: 'ok', data: { malicious: 52, suspicious: 0, harmless: 0, undetected: 20, label: 'trojan.lumma' } }, malwarebazaar: { status: 'ok', data: { signature: 'LummaStealer', fileType: 'exe' } } } };
+a = E.assess(hashMal);
+check('malicious hash', a.verdict === 'malicious' && /isolate/i.test(a.actions[0]), `${a.verdict} ${a.actions[0]}`);
+
+const cve = { type: 'cve', group: 'cve', value: 'CVE-2024-3400', memory: [], local: {}, sources: {
+  kev: { status: 'ok', data: { vendor: 'Palo Alto Networks', product: 'PAN-OS', dateAdded: '2024-04-12', ransomware: 'Unknown', requiredAction: 'Apply mitigations per vendor instructions' } },
+  epss: { status: 'ok', data: { epss: 0.9999, percentile: 1 } }, nvd: { status: 'ok', data: { score: 10, severity: 'CRITICAL', description: 'A command injection ...' } } } };
+a = E.assess(cve);
+check('KEV CVE -> critical', a.verdict === 'critical', `${a.verdict} ${a.summary}`);
+check('EPSS 0.9999 shown as >99.9%, not 100%', a.reasons.some((r) => /EPSS: >99\.9% chance/.test(r.t)), a.reasons.find((r) => /EPSS/.test(r.t)).t);
+
+section('Ticket note');
+const items = [ipMal, phish, internal].map((r) => ({ report: r, a: E.assess(r) }));
+const note = E.ticketNote(items, { context: 'Securonix INC-1234', analyst: 'L1 tester', summary: 'Test summary.' });
+check('note overall = worst', /Overall: MALICIOUS/.test(note.text));
+check('note is defanged', !/45\.155\.205\.233/.test(note.text) && /45\[\.\]155/.test(note.text));
+check('note lists skipped sources', /VirusTotal \(no API key\)/.test(note.text), note.text.split('\n').find((l) => l.startsWith('Not checked')));
+check('html note escapes and has table', /<table/.test(note.html) && !/<script/.test(note.html));
+check('markdown table', /\| # \| Indicator \|/.test(note.markdown));
+html += `<pre class="note">${esc(note.text)}</pre>`;
+
+section('Email headers');
+const phishHdr = `Received: from mx.clienta.com (10.0.0.5) by exch01.clienta.local with SMTP; Mon, 19 Oct 2026 10:00:05 +0000
+Received: from mail.evil-sender.top (mail.evil-sender.top [185.220.101.4]) by mx.clienta.com with ESMTPS id abc; Mon, 19 Oct 2026 10:00:00 +0000
+Authentication-Results: mx.clienta.com; spf=fail smtp.mailfrom=evil-sender.top; dkim=none; dmarc=fail header.from=clienta-payroll.com
+From: "Microsoft 365 Security" <alerts@clienta-payroll.com>
+Reply-To: billing@gmail-secure-mail.ru
+Return-Path: <bounce@evil-sender.top>
+To: bob@clienta.com
+Subject: Action required: password expires today
+Date: Mon, 19 Oct 2026 09:59:58 +0000
+Message-ID: <123@evil-sender.top>
+X-Mailer: PHPMailer 6.8
+
+body text`;
+let hr = HD.analyze(phishHdr);
+check('phish headers -> malicious', hr.ok && hr.verdict === 'malicious', `${hr.verdict} ${hr.score}`);
+check('auth parsed', hr.auth.spf === 'fail' && hr.auth.dmarc === 'fail' && hr.auth.dkim === 'none', JSON.stringify(hr.auth));
+check('reply-to BEC flagged', hr.reasons.some((r) => /Reply-To/.test(r.t)));
+check('brand display name flagged', hr.reasons.some((r) => /Microsoft/.test(r.t)));
+check('originating IP = first public hop', hr.origin === '185.220.101.4', hr.origin);
+check('hops oldest first with delay', hr.hops.length === 2 && hr.hops[0].ip === '185.220.101.4' && hr.hops[1].delay === 5, JSON.stringify(hr.hops.map((x) => [x.ip, x.delay])));
+check('IOCs offered', hr.iocs.some((x) => x.value === '185.220.101.4') && hr.iocs.some((x) => x.value === 'clienta-payroll.com'));
+
+const goodHdr = `Authentication-Results: mx.google.com; dkim=pass header.i=@github.com header.s=pf2023 header.b=abc; spf=pass smtp.mailfrom=noreply@github.com; dmarc=pass (p=REJECT) header.from=github.com
+From: GitHub <noreply@github.com>
+Subject: [GitHub] A new SSH key was added
+Received: from out-21.smtp.github.com (out-21.smtp.github.com [192.30.252.204]) by mx.google.com with ESMTPS; Mon, 19 Oct 2026 10:00:00 +0000`;
+hr = HD.analyze(goodHdr);
+check('clean headers -> benign', hr.verdict === 'benign', `${hr.verdict} ${hr.score} ${hr.reasons.map((r) => r.t).join('; ')}`);
+check('empty input handled', HD.analyze('').ok === false);
+
+section('Client memory v2');
+{
+  const M = VSMemory, now = Date.parse('2026-10-20T12:00:00Z'), D = 864e5;
+  check('parse ASN', M.parseKey('auto', 'AS62044').kind === 'asn' && M.parseKey('asn', '62044').value === 'AS62044');
+  check('parse country', M.parseKey('country', 'bd').value === 'BD');
+  check('parse account / host lowercased', M.parseKey('user', 'SVC-Backup').value === 'svc-backup' && M.parseKey('auto', 'host:BKP-SRV01').kind === 'host');
+  check('parse CIDR kept', M.parseKey('auto', '203.0.113.0/24').value === '203.0.113.0/24');
+  let threw = false; try { M.parseKey('auto', 'not an ioc'); } catch (_) { threw = true; }
+  check('free text without a type is rejected', threw);
+  const list = [
+    M.normalize({ id: 'a', kind: 'ioc', ioc: '203.0.113.0/24', client: 'Client A', verdict: 'benign', note: 'Fortinet VPN egress', by: 'Arefin', ticket: 'INC-1', updated: now - D, expires: now + 80 * D }),
+    M.normalize({ id: 'b', kind: 'ioc', ioc: 'contoso-files.com', client: 'Client B', verdict: 'benign', note: 'File share', updated: now - D }),
+    M.normalize({ id: 'c', kind: 'ioc', ioc: '198.51.100.9', client: '', verdict: 'malicious', note: 'Known C2', updated: now - 200 * D, expires: now - 10 * D }),
+    M.normalize({ id: 'd', kind: 'asn', ioc: 'AS62044', client: 'Client A', verdict: 'benign', note: 'Zscaler', updated: now }),
+    M.normalize({ id: 'e', kind: 'country', ioc: 'BD', client: 'Client A', verdict: 'benign', note: 'Dhaka office', updated: now }),
+    M.normalize({ id: 'f', kind: 'user', ioc: 'svc-backup', client: 'Client A', verdict: 'benign', note: 'Nightly backup job, logs in at 02:00', updated: now }),
+    M.normalize({ id: 'g', kind: 'host', ioc: 'bkp-srv01', client: '', verdict: 'note', note: 'Backup server', updated: now })
+  ];
+  check('CIDR note matches IP for that client', M.matchIoc(list, 'ipv4', '203.0.113.77', 'Client A', now).length === 1);
+  check('client scope: Client B does not get Client A notes', M.matchIoc(list, 'ipv4', '203.0.113.77', 'Client B', now).length === 0);
+  check('all-clients view sees every note', M.matchIoc(list, 'ipv4', '203.0.113.77', '', now).length === 1);
+  check('domain note covers subdomains', M.matchIoc(list, 'domain', 'eu.contoso-files.com', 'Client B', now).length === 1);
+  const old = M.matchIoc(list, 'ipv4', '198.51.100.9', 'Client A', now);
+  check('global note applies to every client, expiry flagged', old.length === 1 && old[0].expired === true);
+  check('network notes: ASN + country', M.matchNetwork(list, { asn: '62044', country: 'bd' }, 'Client A', now).map((m) => m.id).join() === 'd,e');
+  const ctx = M.matchContext(list, 'Logon by CORP\\svc-backup on BKP-SRV01 at 02:03', 'Client A', now).map((m) => m.id).sort().join();
+  check('accounts / hostnames found in pasted text', ctx === 'f,g', ctx);
+  check('no partial-word context match', M.matchContext(list, 'svc-backup2 logged in', 'Client A', now).length === 0);
+  check('description has who / ticket / date', /by Arefin · INC-1/.test(M.describe(list[0])), M.describe(list[0]));
+
+  const base = { type: 'ipv4', group: 'ip', value: '198.51.100.9', local: {}, sources: { greynoise: { status: 'notfound' }, internetdb: { status: 'notfound' } } };
+  let a = E.assess(Object.assign({}, base, { memory: old }));
+  check('expired malicious note is NOT trusted', a.verdict === 'unknown' && a.reasons.some((r) => /EXPIRED/.test(r.t)), `${a.verdict} | ${a.reasons.map((r) => r.t).join('; ')}`);
+  a = E.assess(Object.assign({}, base, { value: '203.0.113.77', memory: M.matchNetwork(list, { asn: '62044' }, 'Client A', now) }));
+  check('ASN note: benign, but not high confidence', a.verdict === 'benign' && a.confidence !== 'high', `${a.verdict} ${a.confidence} ${a.score}`);
+  a = E.assess(Object.assign({}, base, { value: '203.0.113.77', memory: M.matchNetwork(list, { country: 'BD' }, 'Client A', now) }));
+  check('country note alone stays below benign', a.verdict === 'unknown', `${a.verdict} ${a.score}`);
+  a = E.assess({ type: 'ipv4', group: 'ip', value: '10.20.30.40', internal: true, local: {}, sources: {},
+    memory: [M.normalize({ id: 'x', ioc: '10.20.30.40', client: 'Client A', verdict: 'benign', note: 'Backup server BKP-SRV01' })].map((m) => Object.assign(m, { _desc: M.describe(m) })) });
+  check('internal IP shows the client note', a.verdict === 'internal' && /Backup server/.test(a.summary) && a.reasons.some((r) => r.src === 'memory'), a.summary);
+  const note = E.ticketNote([{ report: base, a: E.assess(Object.assign({}, base, { memory: [] })) }], { client: 'Client A', clientContext: [M.describe(list[5])] });
+  check('ticket note carries client + client context', /Client: Client A/.test(note.text) && /Client context: Client A: Account svc-backup/.test(note.text));
+}
+
+section('Recent activity');
+{
+  const t0 = Date.parse('2026-10-20T12:00:00Z'), iso = (m) => new Date(t0 - m * 60e3).toISOString();
+  const evs = [
+    { type: 'page_warned', severity: 'medium', ts: iso(5), host: 'www.abuseipdb.com', url: 'https://www.abuseipdb.com/account', reasons: ['Asks for a password while mentioning Google'], brand: 'Google' },
+    { type: 'page_warned', severity: 'medium', ts: iso(70), host: 'www.abuseipdb.com', url: 'https://www.abuseipdb.com/account', reasons: ['Asks for a password while mentioning Google'], brand: 'Google' },
+    { type: 'user_bypass', severity: 'medium', ts: iso(600), host: 'login.microsoftonline.com.example.top', url: 'https://login.microsoftonline.com.example.top/' },
+    { type: 'url_blocked', severity: 'high', ts: iso(601), host: 'login.microsoftonline.com.example.top', url: 'https://login.microsoftonline.com.example.top/', reasons: ['Real brand domain used as a prefix'], brand: 'Microsoft' }
+  ];
+  const items = VSActivity.build(evs);
+  check('repeats collapse into one item', items.length === 2 && items[0].count === 2, items.map((i) => i.title + ' x' + i.count).join(' | '));
+  check('block + bypass merge', items[1].bypassed && items[1].title === 'Blocked a fake Microsoft site', items[1].title);
+  check('real domain named, look-alike prefix explained', items[1].site === 'example.top' && items[1].posing === 'login.microsoftonline.com', items[1].site + ' / ' + items[1].posing);
+  check('relative time', VSActivity.when(t0 - 5 * 60e3, t0) === '5 min ago');
+}
+
+document.getElementById('summary').innerHTML = `<span class="${fail ? 'fail' : 'pass'}">${pass} passed, ${fail} failed</span>`;
+document.getElementById('out').innerHTML = html;
+document.title = `${fail ? 'FAIL' : 'PASS'} ${pass}/${pass + fail} SOCLens analyst tests`;
+</script>
+</body>
+</html>

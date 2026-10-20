@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOCLens analyst panel preview</title>
+<style>html { background: #e9ecf1; } body.frame { max-width: 440px; margin: 0 auto; min-height: 100vh; box-shadow: 0 0 0 1px #d0d5dd; }</style>
+</head>
+<body class="frame">
+<!--
+  Runs the real side panel (pages/analyst.*) and the real intel code (lib/sources.js) outside the
+  extension, with an in-memory stand-in for chrome.storage / chrome.runtime. Lookups hit the live
+  public APIs from this page. GreyNoise refuses browser pages, so it shows as an error here.
+  Serve the repo root (python -m http.server 8765) and open /tests/analyst-preview.html
+-->
+<script>
+(function () {
+  const stores = { local: {}, session: {} };
+  const listeners = [];
+  const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
+  function area(name) {
+    const s = stores[name];
+    return {
+      async get(keys) {
+        if (keys == null) return clone(s);
+        const list = Array.isArray(keys) ? keys : typeof keys === 'string' ? [keys] : Object.keys(keys);
+        const out = {};
+        for (const k of list) if (k in s) out[k] = clone(s[k]);
+        return out;
+      },
+      async set(obj) {
+        const ch = {};
+        for (const [k, v] of Object.entries(obj)) { ch[k] = { oldValue: s[k], newValue: clone(v) }; s[k] = clone(v); }
+        setTimeout(() => listeners.forEach((fn) => fn(ch, name)), 0);
+      },
+      async remove(keys) { for (const k of [].concat(keys)) delete s[k]; }
+    };
+  }
+  window.chrome = {
+    storage: { local: area('local'), session: area('session'), onChanged: { addListener: (fn) => listeners.push(fn) } },
+    runtime: { getURL: (p) => '../extension/' + p, getManifest: () => ({ version: 'preview' }), sendMessage: (msg) => window.__handle(msg) }
+  };
+  // Minimal stand-in for background.js domainAgeDays (RDAP).
+  window.domainAgeDays = async function (domain) {
+    try {
+      const r = await fetch('https://rdap.org/domain/' + encodeURIComponent(domain));
+      if (!r.ok) return null;
+      const j = await r.json();
+      const ev = (j.events || []).find((e) => e.eventAction === 'registration');
+      return ev ? Math.floor((Date.now() - Date.parse(ev.eventDate)) / 864e5) : null;
+    } catch (_) { return null; }
+  };
+})();
+</script>
+<script src="../extension/lib/analyzer.js"></script>
+<script src="../extension/lib/config.js"></script>
+<script src="../extension/lib/ioc.js"></script>
+<script src="../extension/lib/memory.js"></script>
+<script src="../extension/lib/engine.js"></script>
+<script src="../extension/lib/headers.js"></script>
+<script src="../extension/lib/sources.js"></script>
+<script>
+(async function () {
+  const S = window.VSSources;
+  const cfg = { blockedSet: new Set(['evil-feed-demo.example']) };
+  window.__handle = async (msg) => {
+    switch (msg.type) {
+      case 'investigate': return S.investigate(msg.value, cfg);
+      case 'detonate': return S.detonate(msg.value);
+      // "demo-ok" fakes a valid key so the wizard's success path can be tried without a real key.
+      case 'testKey': return msg.key === 'demo-ok' ? { ok: true, message: 'Demo key accepted' } : S.testKey(msg.provider, msg.key);
+      case 'analystSettings': return S.settings();
+      case 'analystSave': return S.saveSettings(msg.patch);
+      case 'memoryList': return S.memoryList();
+      case 'memorySave': try { return { ok: true, item: await S.memorySave(msg.entry) }; } catch (e) { return { ok: false, error: e.message }; }
+      case 'memoryDelete': return S.memoryDelete(msg.id);
+      case 'memoryConfirm': return S.memoryConfirm(msg.id);
+      case 'memoryContext': return S.memoryContext(msg.text);
+      case 'memoryImport': return Object.assign({ ok: true }, await S.memoryImport(msg.items));
+      default: return null;
+    }
+  };
+  // Pull in the real panel markup and run its script.
+  const html = await (await fetch('../extension/pages/analyst.html')).text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  for (const l of doc.querySelectorAll('link[rel=stylesheet]')) {
+    const n = document.createElement('link'); n.rel = 'stylesheet'; n.href = '../extension/pages/' + l.getAttribute('href'); document.head.append(n);
+  }
+  doc.querySelectorAll('script').forEach((s) => s.remove());
+  doc.querySelectorAll('img[src^="../"]').forEach((i) => i.setAttribute('src', '../extension/' + i.getAttribute('src').slice(3)));
+  document.body.append(...doc.body.childNodes);
+  const s = document.createElement('script');
+  s.src = '../extension/pages/analyst.js';
+  document.body.append(s);
+})();
+</script>
+</body>
+</html>

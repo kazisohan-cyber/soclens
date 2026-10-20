@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SOCLens Console{% endblock %}</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+{% if user %}
+<header class="top">
+  <a class="brand" href="/">SOCLens <span>Console</span></a>
+  <nav>
+    <a href="/">Overview</a>
+    <a href="/events">Events</a>
+    <a href="/campaigns">Campaigns</a>
+    <a href="/queue">Verify queue</a>
+    {% if user.role == 'mssp_admin' %}<a href="/tenants">Tenants</a><a href="/users">Users</a><a href="/audit">Audit</a>{% endif %}
+  </nav>
+  <form method="post" action="/logout" class="who">
+    <span>{{ user.username }} · {{ user.role }}{% if user.tenant_id %} · {{ user.tenant_id }}{% endif %}</span>
+    <button class="link">Sign out</button>
+  </form>
+</header>
+<div class="shadow-banner">Shadow mode: verdicts are suggestions. SOCLens never closes alerts; analysts decide.</div>
+{% endif %}
+<main>{% block body %}{% endblock %}</main>
+</body>
+</html>

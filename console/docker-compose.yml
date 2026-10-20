@@ -1,0 +1,87 @@
+name: soclens
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: soclens
+      POSTGRES_USER: soclens
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soclens -d soclens"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  console:
+    build: ./app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://soclens:${POSTGRES_PASSWORD}@db:5432/soclens
+      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
+      COOKIE_SECURE: "true"
+      PROXY_MODE: ${PROXY_MODE:-caddy}   # "cloudflare" with the tunnel profile
+      CONSOLE_ADMIN_USER: ${CONSOLE_ADMIN_USER:-admin}
+      CONSOLE_ADMIN_PASSWORD: ${CONSOLE_ADMIN_PASSWORD:-}
+      BOOTSTRAP_TENANTS: ${BOOTSTRAP_TENANTS:-}
+      SETTLE_SEC: ${SETTLE_SEC:-60}
+      HEARTBEAT_RETENTION_DAYS: ${HEARTBEAT_RETENTION_DAYS:-7}
+      AUTH_EVENT_RETENTION_DAYS: ${AUTH_EVENT_RETENTION_DAYS:-30}
+      GEOIP_ASN_DB: /data/GeoLite2-ASN.mmdb
+      FEEDS_ENABLED: ${FEEDS_ENABLED:-true}
+      FEED_SOURCES: ${FEED_SOURCES:-phishtank,openphish,urlhaus}
+      COMMUNITY_ENROLL: ${COMMUNITY_ENROLL:-false}
+      ENROLL_MAX_TOTAL: ${ENROLL_MAX_TOTAL:-50}
+      ENROLL_MAX_PER_IP_HOUR: ${ENROLL_MAX_PER_IP_HOUR:-5}
+      CONSOLE_URL: ${CONSOLE_URL:-}
+      NOTIFY_TELEGRAM_BOT_TOKEN: ${NOTIFY_TELEGRAM_BOT_TOKEN:-}
+      NOTIFY_TELEGRAM_CHAT_ID: ${NOTIFY_TELEGRAM_CHAT_ID:-}
+      NOTIFY_MSSP_MIN_SEVERITY: ${NOTIFY_MSSP_MIN_SEVERITY:-critical}
+      NOTIFY_MAX_PER_HOUR: ${NOTIFY_MAX_PER_HOUR:-20}
+    volumes:
+      - ./geoip:/data:ro      # optional: drop GeoLite2-ASN.mmdb here for same-ASN IP matching
+    expose:
+      - "8000"                # not published: only reachable through Caddy or cloudflared
+
+  # Exactly one front end runs, picked by COMPOSE_PROFILES in .env:
+  #   caddy  - publishes 80/443 on this host, automatic HTTPS
+  #   tunnel - Cloudflare Tunnel, publishes no ports (use when 80/443 belong to another app)
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["caddy"]
+    restart: unless-stopped
+    depends_on:
+      - console
+    environment:
+      CONSOLE_DOMAIN: ${CONSOLE_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.1
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    depends_on:
+      console:
+        condition: service_healthy
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN:-}   # tunnel's public hostname -> http://console:8000
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Audit log <small>latest 500</small></h1>
+<form class="filters" method="get"><input name="tenant" value="{{ tenant }}" placeholder="tenant id"><button>Filter</button></form>
+<div class="scroll"><table>
+<tr><th>Time (UTC)</th><th>Actor</th><th>Action</th><th>Tenant</th><th>Target</th><th>Detail</th></tr>
+{% for r in rows %}<tr><td>{{ r.ts.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ r.actor }}</td><td>{{ r.action }}</td><td>{{ r.tenant_id or '' }}</td><td><small>{{ r.target or '' }}</small></td><td><small>{{ r.detail|tojson }}</small></td></tr>{% endfor %}
+</table></div>
+{% endblock %}

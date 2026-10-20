@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SOCLens analyzer tests</title>
+<style>
+  body { font: 13px/1.5 ui-monospace, Consolas, monospace; margin: 16px; background: #fff; color: #111; }
+  .pass { color: #067647; } .fail { color: #b42318; font-weight: 700; }
+  h1 { font: 700 16px system-ui; }
+  #summary { font: 700 15px system-ui; margin: 8px 0 16px; }
+</style>
+</head>
+<body>
+<h1>SOCLens analyzer tests</h1>
+<div id="summary"></div>
+<pre id="out"></pre>
+<script src="../extension/lib/analyzer.js"></script>
+<script>
+const A = window.VSAnalyzer;
+const out = [];
+let pass = 0, fail = 0;
+const rank = { safe: 0, caution: 1, warn: 2, block: 3 };
+function check(name, cond, detail) {
+  if (cond) pass++; else fail++;
+  out.push(`<span class="${cond ? 'pass' : 'fail'}">${cond ? 'PASS' : 'FAIL'}</span> ${name}${detail ? '  — ' + detail : ''}`);
+}
+function url(u, expect, cfg) {
+  const v = A.analyzeUrl(u, cfg);
+  const ok = expect.startsWith('>=') ? rank[v.level] >= rank[expect.slice(2)] : expect.startsWith('<=') ? rank[v.level] <= rank[expect.slice(2)] : v.level === expect;
+  check(`url ${expect.padEnd(9)} ${u}`, ok, `${v.level} ${v.score}${v.allow ? ' allow' : ''} | ${v.reasons.join('; ')}`);
+}
+const corp = { corporateDomains: ['contoso.com'], blockedDomains: ['evil.com'] };
+
+// ---- benign
+url('https://login.microsoftonline.com/common/oauth2', 'safe');
+url('https://www.google.de/search?q=x', 'safe');
+url('https://paypal.de/', 'safe');
+url('https://github.com/anthropics', 'safe');
+url('https://www.officedepot.com/', 'safe');
+url('https://www.applebees.com/', 'safe');
+url('https://zoom.us/j/123', 'safe');
+url('https://mail.google.com/mail/u/0/#inbox', 'safe');
+url('https://contoso.sharepoint.com/sites/x', 'safe');
+url('https://news.ycombinator.com/', 'safe');
+url('https://www.maybank2u.com.my/home', 'safe');
+url('https://www.bbc.co.uk/news', 'safe');
+url('https://intranet.contoso.com/login', 'safe', corp);
+url('https://docs.python.org/3/', 'safe');
+url('https://www.amazon.sg/', 'safe');
+url('https://stackoverflow.com/questions', 'safe');
+
+// ---- malicious
+url('https://a.evil.com/x', 'block', corp);
+url('http://paypa1-secure-login.xyz/webscr?cmd=login', 'block');
+url('https://login.microsoftonline.com.verify-account.top/', 'block');
+url('https://xn--pple-43d.com/id', 'block');
+url('https://xn--ggle-55da.com/', 'block');
+url('https://xn--microsft-sbh.com/login', 'block');
+url('https://rnicrosoft.com/login', '>=warn');
+url('https://micros0ft-support.com/verify', '>=warn');
+url('https://microsoft-login.pages.dev/', '>=warn');
+url('https://paypal.netlify.app/', '>=warn');
+url('http://192.168.10.5:8080/login', '>=warn');
+url('http://login.microsoft.com@evil.example/', '>=warn');
+url('https://secure-docusign-review.web.app/sign?email=a%40contoso.com', 'block');
+url('https://bit.ly/3xyz', '<=caution');
+
+// ---- page signals
+const pageCase = (name, u, sig, expect) => {
+  const v = A.analyzePage(A.analyzeUrl(u), sig);
+  const ok = v.level === expect || (expect.startsWith('>=') && rank[v.level] >= rank[expect.slice(2)]) || (expect.startsWith('<=') && rank[v.level] <= rank[expect.slice(2)]);
+  check(`page ${expect.padEnd(6)} ${name}`, ok, `${v.level} ${v.score} | ${v.reasons.join('; ')}`);
+};
+pageCase('MS logo login on random domain', 'https://secure-docs.example-share.com/', { hasPassword: true, brandStrong: ['Sign in to your Microsoft account', 'Microsoft logo.svg'] }, 'block');
+pageCase('Only mentions Microsoft in body (established site)', 'https://app.somesaas.io/login', { hasPassword: true, brandStrong: ['SomeSaaS'], bodyText: 'Integrates with Microsoft Teams', ageDays: 2000 }, '<=caution');
+pageCase('Mentions Microsoft in body + young domain', 'https://app.somesaas.io/login', { hasPassword: true, brandStrong: ['SomeSaaS'], bodyText: 'Verify your Microsoft 365 mailbox', ageDays: 20 }, '>=warn');
+pageCase('AbuseIPDB account page with Google Authenticator', 'https://www.abuseipdb.com/account', { hasPassword: true, brandStrong: ['AbuseIPDB'], bodyText: 'Two-factor authentication: use Google Authenticator. Sign in with Google.', ageDays: 3500 }, 'safe');
+pageCase('SSO button text only, new-ish domain', 'https://tool.newapp.dev/login', { hasPassword: true, brandStrong: ['NewApp'], bodyText: 'Continue with Google or Sign in with Microsoft', ageDays: 40 }, '<=caution');
+pageCase('Phish body says sign in with your Microsoft account + young', 'https://docs-share-portal.com/x', { hasPassword: true, brandStrong: ['Docs'], bodyText: 'Sign in with your Microsoft account to view the document', ageDays: 5 }, '>=warn');
+pageCase('Plain login, no brand', 'https://app.somesaas.io/login', { hasPassword: true, brandStrong: ['SomeSaaS login'], bodyText: 'Welcome back' }, 'safe');
+pageCase('Real Microsoft page', 'https://login.microsoftonline.com/', { hasPassword: true, brandStrong: ['Sign in to your account', 'Microsoft'] }, 'safe');
+pageCase('New domain + login + suspicious', 'https://portal-update.xyz/', { hasPassword: true, brandStrong: ['Portal'], ageDays: 3 }, '>=warn');
+pageCase('http password form', 'http://shop.example.org/login', { hasPassword: true, brandStrong: ['Shop'], isHttp: true }, '<=caution');
+
+// ---- unwrap / helpers
+check('unwrap google redirect', A.unwrapUrl('https://www.google.com/url?q=https://evil.xyz/a&sa=D') === 'https://evil.xyz/a');
+check('unwrap safelinks', A.unwrapUrl('https://nam02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fevil.xyz%2Fb&data=x') === 'https://evil.xyz/b');
+check('unwrap proofpoint v3', A.unwrapUrl('https://urldefense.com/v3/__https://evil.xyz/c__;!!abc$') === 'https://evil.xyz/c');
+check('registrable co.uk', A.registrableDomain('a.b.bbc.co.uk') === 'bbc.co.uk');
+check('registrable hosting', A.registrableDomain('x.y.pages.dev') === 'y.pages.dev');
+check('punycode decode', A.decodeHost('xn--pple-43d.com') === 'аpple.com');
+check('defang', A.defang('https://evil.xyz/a') === 'hxxps://evil[.]xyz/a');
+
+// ---- email
+const mail = (name, e, expect, cfg) => {
+  const r = A.analyzeEmail(e, cfg);
+  check(`email ${expect.padEnd(6)} ${name}`, r.level === expect || (expect.startsWith('<=') && rank[r.level] <= rank[expect.slice(2)]), `${r.level} ${r.score} | ${r.reasons.join('; ')}`);
+  return r;
+};
+const ph = mail('MS impersonation', {
+  senderName: 'Microsoft Account Team', senderEmail: 'no-reply@micros0ft-support.com', subject: 'Unusual sign-in activity',
+  text: 'Your account will be suspended within 24 hours. Verify your account now.',
+  links: [{ href: 'https://micros0ft-support.com/verify', text: 'https://account.microsoft.com' }]
+}, 'block');
+check('email link mismatch detected', ph.links[0].mismatch === true);
+mail('Display-name spoof from gmail', {
+  senderName: 'DocuSign', senderEmail: 'docs.notify8812@gmail.com', subject: 'Please review the document',
+  text: 'You have received a document to review and sign.', links: [{ href: 'https://docusign-review.web.app/x', text: 'REVIEW DOCUMENT' }]
+}, 'block');
+mail('Colleague email', {
+  senderName: 'Alice Tan', senderEmail: 'alice@contoso.com', subject: 'Minutes', text: 'See notes from today.',
+  links: [{ href: 'https://github.com/org/repo', text: 'repo' }]
+}, 'safe', corp);
+mail('Newsletter', {
+  senderName: 'GitHub', senderEmail: 'noreply@github.com', subject: 'Your weekly digest', text: 'Here is what happened this week.',
+  links: [{ href: 'https://github.com/x', text: 'github.com/x' }, { href: 'https://www.google.com/url?q=https://docs.github.com/', text: 'Docs' }]
+}, '<=caution');
+mail('HTML attachment lure', {
+  senderName: 'Accounts', senderEmail: 'billing@random-vendor.com', subject: 'Invoice overdue — action required',
+  text: 'Payment failed. Open the attached invoice immediately.', attachments: ['Invoice_8812.html'], links: []
+}, 'warn');
+
+document.getElementById('summary').innerHTML = `<span class="${fail ? 'fail' : 'pass'}">${pass} passed, ${fail} failed</span>`;
+document.getElementById('out').innerHTML = out.join('\n');
+window.__results = { pass, fail };
+</script>
+</body>
+</html>

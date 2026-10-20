@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mock webmail — SOCLens UI test</title>
+<style>
+  body { font: 14px system-ui; margin: 0; background: #f3f4f6; }
+  main { max-width: 760px; margin: 24px auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; }
+  .from { color: #444; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<!-- Stub of chrome.runtime that routes messages to the real analyzer, mirroring background.js. -->
+<script src="../extension/lib/analyzer.js"></script>
+<script>
+  window.__sent = [];
+  window.chrome = { runtime: { lastError: null, sendMessage(msg, cb) {
+    window.__sent.push(msg.type);
+    let r = null;
+    if (msg.type === 'scanEmail') {
+      const x = VSAnalyzer.analyzeEmail(msg.email, {});
+      r = { level: x.level, score: x.score, reasons: x.reasons, allowBypass: true,
+        links: x.links.map((l) => ({ href: l.href, real: l.real, level: l.verdict.level, score: l.verdict.score, reasons: l.verdict.reasons, allow: l.verdict.allow })) };
+    } else if (msg.type === 'report') r = { ok: true, sentToSoc: true };
+    setTimeout(() => cb && cb(r), 5);
+  } } };
+</script>
+<main role="main">
+  <h2 role="heading">Unusual sign-in activity</h2>
+  <div class="from"><span title="Microsoft Account Team &lt;no-reply@micros0ft-support.com&gt;">Microsoft Account Team &lt;no-reply@micros0ft-support.com&gt;</span></div>
+  <div aria-label="Message body">
+    <p>We detected unusual sign-in activity. Your account will be suspended within 24 hours unless you verify your account.</p>
+    <p><a id="bad" href="https://micros0ft-support.com/verify">https://account.microsoft.com</a></p>
+    <p>Or contact <a id="good" href="https://support.microsoft.com/">Microsoft Support</a>.</p>
+  </div>
+</main>
+<script src="../extension/content/ui.js"></script>
+<script src="../extension/content/webmail.js"></script>
+</body>
+</html>

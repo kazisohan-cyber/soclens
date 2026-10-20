@@ -1,0 +1,5 @@
+.env
+.env.dev
+geoip/*.mmdb
+__pycache__/
+*.db

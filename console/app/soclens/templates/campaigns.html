@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Campaigns <small>one site or sender hitting several users</small></h1>
+{% if error %}<p class="err">{{ error }}</p>{% endif %}
+<form class="filters" method="get">
+  <select name="tenant"><option value="">All tenants</option>{% for t in tenants %}<option {{ 'selected' if t == f.tenant }}>{{ t }}</option>{% endfor %}</select>
+  <label>Last <select name="days">{% for d in [1, 7, 30, 90] %}<option {{ 'selected' if d == f.days }}>{{ d }}</option>{% endfor %}</select> days</label>
+  <label>Min users <select name="min_users">{% for n in [1, 2, 3, 5, 10] %}<option {{ 'selected' if n == f.min_users }}>{{ n }}</option>{% endfor %}</select></label>
+  <button>Filter</button>
+</form>
+<p class="muted">Credential leaks always show, even for one user. Sorted: credential leaks first, then by users affected.</p>
+<div class="scroll"><table>
+<tr><th>Site / sender</th><th>Users</th><th>Events</th><th>What happened</th><th>Tenants</th><th>First / last</th><th>Status</th><th></th></tr>
+{% for c in campaigns %}
+<tr class="{{ 'sev-critical' if c.credential }}">
+  <td class="mono"><a href="/events?{{ 'site' if c.kind == 'domain' else 'sender' }}={{ c.key|urlencode }}&window=all{% if f.tenant %}&tenant={{ f.tenant }}{% endif %}">{{ c.key }}</a>
+    {% if c.kind == 'sender' %}<br><span class="muted">email sender</span>{% elif c.hosts|length > 1 or (c.hosts and c.hosts[0] != c.key) %}<br><span class="muted">{{ c.hosts|join(', ') }}</span>{% endif %}</td>
+  <td><b>{{ c.n_users }}</b></td><td>{{ c.events }}</td>
+  <td>{% for t, n in c.types %}<span class="chip {{ 'chip-bad' if t in ('credential_reuse_blocked', 'user_bypass') }}">{{ labels.get(t, t) }} ×{{ n }}</span> {% endfor %}</td>
+  <td>{{ c.tenants|join(', ') }}</td>
+  <td class="muted">{{ c.first.strftime('%m-%d %H:%M') }}<br>{{ c.last.strftime('%m-%d %H:%M') }}</td>
+  <td>{% if c.blocked %}<span class="ok">blocked</span>{% elif c.in_feed %}<span class="ok">in threat feed</span>{% elif c.kind == 'domain' %}<span class="err">not blocked</span>{% else %}–{% endif %}</td>
+  <td>{% if can_block and c.kind == 'domain' and not c.blocked and not c.never_block %}
+    <form method="post" action="/campaigns/block" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="domain" value="{{ c.key }}"><input type="hidden" name="tenants" value="{{ c.tenants|join(',') }}">
+      <button name="scope" value="tenants">Block</button>{% if is_admin %}<button name="scope" value="all" class="secondary" title="Block for every tenant">All tenants</button>{% endif %}
+    </form>{% elif c.never_block %}<span class="muted" title="Shared platform or big brand">block exact host from the event</span>{% endif %}</td>
+</tr>
+{% else %}<tr><td colspan="8" class="muted">No campaigns in this window.</td></tr>{% endfor %}
+</table></div>
+{% endblock %}

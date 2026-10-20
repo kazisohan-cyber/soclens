@@ -1,0 +1,128 @@
+{
+  "type": "object",
+  "properties": {
+    "apiEndpoint": {
+      "title": "SOC API endpoint",
+      "description": "Base URL of the SOCLens backend, e.g. https://shield.example.com. Events go to POST /v1/events, blocklist from GET /v1/blocklist.",
+      "type": "string"
+    },
+    "apiKey": {
+      "title": "API key",
+      "description": "Bearer token for the backend (per tenant).",
+      "type": "string"
+    },
+    "tenantId": {
+      "title": "Tenant ID",
+      "description": "Client / tenant identifier attached to every event.",
+      "type": "string"
+    },
+    "userId": {
+      "title": "User identifier",
+      "description": "Optional user or device label attached to events (e.g. UPN pushed per user).",
+      "type": "string"
+    },
+    "corporateDomains": {
+      "title": "Corporate domains",
+      "description": "The organisation's own domains. Trusted everywhere; the corporate password may be typed here.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "corporateLoginDomains": {
+      "title": "Corporate login domains",
+      "description": "Login pages where the corporate password is learned (as a salted hash). Add ADFS / Okta / VPN portals here.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "allowedDomains": {
+      "title": "Allowed domains",
+      "description": "Never flagged.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "blockedDomains": {
+      "title": "Blocked domains",
+      "description": "Always blocked.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "extraBrands": {
+      "title": "Extra protected brands",
+      "description": "Brands to protect from impersonation (e.g. the client's own company).",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "domains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "pageTerms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "warnThreshold": {
+      "title": "Warn threshold (0-100)",
+      "type": "integer"
+    },
+    "blockThreshold": {
+      "title": "Block threshold (0-100)",
+      "type": "integer"
+    },
+    "credentialGuard": {
+      "title": "Credential guard",
+      "type": "boolean"
+    },
+    "webmailScanner": {
+      "title": "Webmail scanner",
+      "type": "boolean"
+    },
+    "pageScanner": {
+      "title": "Page scanner",
+      "type": "boolean"
+    },
+    "domainAgeLookup": {
+      "title": "Domain age lookup (RDAP)",
+      "description": "Looks up registration date of already-suspicious domains via rdap.org.",
+      "type": "boolean"
+    },
+    "allowUserBypass": {
+      "title": "Allow user bypass",
+      "description": "If false, users cannot proceed past a block or trust a site.",
+      "type": "boolean"
+    },
+    "verifyEnabled": {
+      "title": "SOCLens Verify",
+      "description": "Record sign-ins on identity-provider pages (Microsoft, Google, Okta, corporate login domains) and send heartbeats, so the console can answer 'was this really the user?' for SIEM identity alerts. Shows 'Was this you?' prompts.",
+      "type": "boolean"
+    },
+    "communityEndpoint": {
+      "title": "Community server",
+      "description": "Optional self-enrolling SOCLens community console (https). Empty = no community server.",
+      "type": "string"
+    }
+  }
+}

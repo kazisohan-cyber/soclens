@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Console users</h1>
+<div class="scroll"><table>
+<tr><th>Username</th><th>Role</th><th>Tenant</th><th>Active</th><th></th></tr>
+{% for x in users %}<tr><td>{{ x.username }}</td><td>{{ x.role }}</td><td>{{ x.tenant_id or 'all' }}</td><td>{{ 'yes' if x.active else 'no' }}</td>
+<td>{% if x.id != user.id %}<form method="post" action="/users/{{ x.id }}/toggle"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link">{{ 'disable' if x.active else 'enable' }}</button></form>{% endif %}</td></tr>{% endfor %}
+</table></div>
+<form method="post" action="/users" class="card inline">
+  <h3>New user</h3>
+  {% if error %}<p class="err">{{ error }}</p>{% endif %}
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input name="username" placeholder="username" required>
+  <input name="password" type="password" placeholder="password (12+ chars)" required minlength="12" autocomplete="new-password">
+  <select name="role">{% for r in roles %}<option>{{ r }}</option>{% endfor %}</select>
+  <select name="tenant_id"><option value="">All tenants</option>{% for t in tenants %}<option value="{{ t.id }}">{{ t.id }}</option>{% endfor %}</select>
+  <button>Create</button>
+</form>
+{% endblock %}

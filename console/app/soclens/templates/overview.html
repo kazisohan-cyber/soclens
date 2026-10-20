@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Overview <small>last 30 days</small></h1>
+{% if not stats %}<p class="muted">No tenants yet.{% if user.role == 'mssp_admin' %} <a href="/tenants">Create one</a>.{% endif %}</p>{% endif %}
+<div class="grid">
+{% for s in stats %}
+<section class="card">
+  <h2><a href="/queue?tenant={{ s.tenant.id }}">{{ s.tenant.name }}</a> <small>{{ s.tenant.id }}</small></h2>
+  <div class="kpis">
+    <div><b>{{ s.pending }}</b><span>awaiting user</span></div>
+    <div><b>{{ s.alerts }}</b><span>identity alerts</span></div>
+    <div><b>{{ '%.0f%%'|format(s.coverage) if s.coverage is not none else '–' }}</b><span>users covered ({{ s.bound_users }}/{{ s.user_denominator }})</span></div>
+    <div><b>{{ '%.0f%%'|format(s.alert_coverage) if s.alert_coverage is not none else '–' }}</b><span>alerts covered by a browser</span></div>
+    <div><b>{{ '%.0f%%'|format(s.agreement) if s.agreement is not none else '–' }}</b><span>analyst agreement ({{ s.feedback }} reviewed)</span></div>
+    <div class="{{ 'bad' if s.false_close else '' }}"><b>{{ s.false_close }}</b><span>false closes</span></div>
+    <div><b>{{ ('%.0fs'|format(s.median_ttv)) if s.median_ttv is not none else '–' }}</b><span>median alert→verdict</span></div>
+    <div><b>{{ '%.0f%%'|format(s.answer_rate) if s.answer_rate is not none else '–' }}</b><span>user answer rate</span></div>
+  </div>
+  <h3>Verdict mix</h3>
+  {% if s.decided %}
+  <div class="bar">{% for v in verdicts %}{% if s.mix[v] %}<span style="width:{{ s.mix[v] / s.decided * 100 }}%;background:{{ VERDICT_COLORS[v] }}" title="{{ v }}: {{ s.mix[v] }}"></span>{% endif %}{% endfor %}</div>
+  <ul class="legend">{% for v in verdicts %}<li><i style="background:{{ VERDICT_COLORS[v] }}"></i><a href="/queue?tenant={{ s.tenant.id }}&verdict={{ v }}">{{ v }}</a> <b>{{ s.mix[v] }}</b></li>{% endfor %}</ul>
+  {% else %}<p class="muted">No verdicts yet.</p>{% endif %}
+</section>
+{% endfor %}
+</div>
+{% endblock %}

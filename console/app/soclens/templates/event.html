@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block body %}
+<p><a href="/events?tenant={{ e.tenantId }}">← Events</a></p>
+<h1>{{ e.label }} <small><span class="sev sev-{{ e.severity }}">{{ e.severity or '–' }}</span> {{ e.tenantId }} · #{{ e.id }}</small></h1>
+{% if error %}<p class="err">{{ error }}</p>{% endif %}
+<div class="cols">
+<section class="card">
+  <table class="kv">
+    <tr><th>Time (browser)</th><td>{{ e.ts }}</td></tr>
+    <tr><th>Received</th><td>{{ e.receivedAt }}</td></tr>
+    <tr><th>User</th><td>{{ e.user or '–' }}{% if nick %} · {{ nick }}{% endif %}</td></tr>
+    <tr><th>Install</th><td class="mono">{{ e.installId or '–' }}</td></tr>
+    <tr><th>Egress IP</th><td class="mono">{{ e.ip or '–' }}</td></tr>
+    {% if e.host %}<tr><th>Host</th><td class="mono">{{ e.hostDefanged }}</td></tr>{% endif %}
+    {% if e.urlDefanged %}<tr><th>URL (defanged)</th><td class="mono copy">{{ e.urlDefanged }}</td></tr>{% endif %}
+    {% if e.score is not none %}<tr><th>Score</th><td>{{ e.score }}{% if e.brand %} · impersonates <b>{{ e.brand }}</b>{% endif %}</td></tr>{% endif %}
+    {% if e.email %}<tr><th>Email</th><td>From <b class="mono">{{ e.email.sender }}</b>{% if e.email.senderName %} ("{{ e.email.senderName }}"){% endif %}<br>Subject: {{ e.email.subject }}<br><span class="muted">{{ e.email.client }}</span></td></tr>{% endif %}
+    {% if e.links %}<tr><th>Links</th><td class="mono">{% for l in e.links %}{{ l }}<br>{% endfor %}</td></tr>{% endif %}
+    {% if e.note %}<tr><th>User note</th><td>{{ e.note }}</td></tr>{% endif %}
+    <tr><th>Extension</th><td>{{ e.version or '–' }}</td></tr>
+  </table>
+  {% if e.reasons %}<h3>Why</h3><ul>{% for r in e.reasons %}<li>{{ r }}</li>{% endfor %}</ul>{% endif %}
+  <details><summary>Raw event JSON</summary><pre class="mono">{{ raw }}</pre></details>
+</section>
+<aside>
+  {% if e.type == 'credential_reuse_blocked' %}
+  <section class="card alert-box">
+    <h3>Credential exposure: act now</h3>
+    <ol><li>Reset {{ e.user or 'the user' }}'s password and re-register MFA.</li>
+    <li>Revoke sessions (Graph <code>revokeSignInSessions</code>).</li>
+    <li>Check sign-ins and inbox rules since {{ e.ts[:16] }}.</li>
+    <li>Block the site below and check who else visited it.</li></ol>
+  </section>
+  {% endif %}
+  {% if key %}
+  <section class="card">
+    <h3>Campaign</h3>
+    {% if key[0] == 'domain' %}<p>Site <b class="mono">{{ key[1] }}</b>: {{ same }} event(s) in this tenant. <a href="/events?tenant={{ e.tenantId }}&site={{ key[1]|urlencode }}&window=all">See all</a></p>
+    {% else %}<p>Sender <b class="mono">{{ key[1] }}</b>. <a href="/events?tenant={{ e.tenantId }}&sender={{ key[1]|urlencode }}&window=all">See all</a></p>{% endif %}
+  </section>
+  {% endif %}
+  {% if can_block and e.host %}
+  <section class="card">
+    <h3>Block for {{ e.tenantId }}</h3>
+    <p class="muted">Every browser in the tenant gets it within 15 minutes.</p>
+    <form method="post" action="/events/{{ e.id }}/block" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button name="domain" value="{{ e.host }}">Block host {{ e.host }}</button>
+      {% if site and site != e.host %}<button name="domain" value="{{ site }}" class="secondary">Block site {{ site }}</button>{% endif %}
+    </form>
+  </section>
+  {% endif %}
+  <section class="card">
+    <h3>Sent to</h3>
+    {% for o in outs %}<p>{{ o.channel }} · <b>{{ o.status }}</b>{% if o.attempts > 1 %} ({{ o.attempts }} tries){% endif %}{% if o.last_error %}<br><small class="err">{{ o.last_error }}</small>{% endif %}</p>
+    {% else %}<p class="muted">No notification or SIEM channel matched.</p>{% endfor %}
+  </section>
+</aside>
+</div>
+{% endblock %}

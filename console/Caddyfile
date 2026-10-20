@@ -1,0 +1,18 @@
+# Automatic HTTPS: a real domain gets a Let's Encrypt / ZeroSSL certificate,
+# "localhost" gets a certificate from Caddy's local CA (dev).
+{$CONSOLE_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 2MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		-Server
+	}
+	# Caddy overwrites X-Forwarded-For with the real peer address (client-supplied values are
+	# not trusted because no trusted_proxies are set), so the console's heartbeat IP = browser egress IP.
+	reverse_proxy console:8000
+}
