@@ -4,7 +4,7 @@
 
 Free, open source, privacy-first. A Chrome / Edge extension (Manifest V3) by OpsVantage. No account, no server: everything runs in your browser, and intel lookups send only the indicator. No frameworks, no build step, about 250 KB.
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Release](https://img.shields.io/github/v/release/kazisohan-cyber/soclens)](https://github.com/kazisohan-cyber/soclens/releases)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Release](https://img.shields.io/github/v/release/kazisohan-cyber/soclens)](https://github.com/kazisohan-cyber/soclens/releases) [![Website](https://img.shields.io/badge/website-soclens-0f766e)](https://kazisohan-cyber.github.io/soclens/)
 
 <p align="center">
   <img src="docs/screenshots/01-investigate.jpg" width="32%" alt="Investigate a whole alert: every indicator gets a verdict, with client context from memory">

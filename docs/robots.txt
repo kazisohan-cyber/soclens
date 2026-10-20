@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kazisohan-cyber.github.io/soclens/sitemap.xml

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOCLens: Free SOC Analyst Extension for IOC Investigation</title>
+<meta name="description" content="SOCLens is a free, open-source Chrome and Edge extension for SOC analysts: right-click any IP, domain, URL, file hash or CVE for an explainable verdict from 15 threat-intel sources, one-click ticket notes, email header analysis, client memory and phishing protection. Runs locally, no account.">
+<meta name="keywords" content="SOC analyst tool, IOC enrichment, threat intelligence browser extension, VirusTotal AbuseIPDB extension, phishing protection, email header analyzer, MSSP, SentinelOne, Securonix, HaloPSA, incident response">
+<meta name="author" content="OpsVantage">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://kazisohan-cyber.github.io/soclens/">
+<meta name="theme-color" content="#0d1117">
+<link rel="icon" type="image/png" href="icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SOCLens">
+<meta property="og:title" content="SOCLens: SOC analyst assistant & phishing protection">
+<meta property="og:description" content="Right-click any IP, domain, URL, hash or CVE for an explainable verdict from 15 intel sources. Ticket notes, email headers, client memory. Free, open source, runs locally.">
+<meta property="og:url" content="https://kazisohan-cyber.github.io/soclens/">
+<meta property="og:image" content="https://kazisohan-cyber.github.io/soclens/og-image.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="SOCLens analyst panel investigating a Securonix alert">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SOCLens: SOC analyst assistant & phishing protection">
+<meta name="twitter:description" content="Explainable IOC verdicts from 15 intel sources, ticket notes, email header analysis and phishing protection. Free and open source.">
+<meta name="twitter:image" content="https://kazisohan-cyber.github.io/soclens/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "SOCLens",
+  "applicationCategory": "SecurityApplication",
+  "applicationSubCategory": "Browser extension",
+  "operatingSystem": "Chrome, Microsoft Edge (Manifest V3)",
+  "softwareVersion": "0.5.1",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "isAccessibleForFree": true,
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "url": "https://kazisohan-cyber.github.io/soclens/",
+  "downloadUrl": "https://github.com/kazisohan-cyber/soclens/releases/latest",
+  "codeRepository": "https://github.com/kazisohan-cyber/soclens",
+  "image": "https://kazisohan-cyber.github.io/soclens/og-image.png",
+  "screenshot": "https://kazisohan-cyber.github.io/soclens/screenshots/01-investigate.jpg",
+  "description": "Free, open-source browser extension for SOC analysts: explainable verdicts for IPs, domains, URLs, file hashes and CVEs from 15 threat-intel sources, one-click ticket notes, email header analysis, client memory and phishing protection.",
+  "featureList": ["Right-click IOC investigation", "15 threat-intelligence sources", "Explainable verdicts with next steps", "One-click ticket notes for HaloPSA and other ticketing tools", "Email header analysis (SPF, DKIM, DMARC, BEC patterns)", "Safe URL detonation via urlscan.io", "IOC highlighting on SOC consoles", "Per-client memory with expiry", "SentinelOne CSV import", "Phishing and fake-login protection"],
+  "author": { "@type": "Organization", "name": "OpsVantage" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Is SOCLens free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. SOCLens is free and open source under the Apache 2.0 licence. Some intel sources need a free API key from the provider (VirusTotal, AbuseIPDB, abuse.ch, urlscan.io); eight sources work with no key at all." } },
+    { "@type": "Question", "name": "Does SOCLens send my data to a server?", "acceptedAnswer": { "@type": "Answer", "text": "No. There is no SOCLens server by default. Everything runs in your browser, and when you investigate an indicator only that indicator is sent, directly to each intel service. Email content, passwords and browsing history never leave the device." } },
+    { "@type": "Question", "name": "Which intel sources does SOCLens use?", "acceptedAnswer": { "@type": "Answer", "text": "Without a key: GreyNoise, Shodan InternetDB, ipinfo, RDAP domain age, DNS, CISA KEV, FIRST EPSS and NVD, plus local lookalike-domain analysis. With a free key: VirusTotal, AbuseIPDB, abuse.ch (URLhaus, ThreatFox, MalwareBazaar) and urlscan.io." } },
+    { "@type": "Question", "name": "Does SOCLens work with Securonix, SentinelOne or HaloPSA?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can investigate any text selected in those consoles, indicators on them are highlighted, ticket notes paste into HaloPSA with formatting, and SentinelOne Threats, Endpoints and Data Lake CSV exports can be imported into client memory." } },
+    { "@type": "Question", "name": "Which browsers are supported?", "acceptedAnswer": { "@type": "Answer", "text": "Google Chrome and Microsoft Edge (Manifest V3), version 116 or later." } }
+  ]
+}
+</script>
+<style>
+  :root { --bg:#f7f8fa; --fg:#14171c; --muted:#5b6370; --card:#fff; --line:#e3e6eb; --accent:#0f766e; --accent-2:#0d9488; --ink:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e8ebf0; --muted:#9aa3af; --card:#151b23; --line:#283039; --accent:#2dd4bf; --accent-2:#5eead4; --ink:#062a27; } }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { width: min(1120px, 100%); margin: 0 auto; padding: 0 20px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 20px; color: var(--fg); text-decoration: none; }
+  .brand img { width: 30px; height: 30px; }
+  nav a { margin-left: 18px; color: var(--muted); text-decoration: none; font-size: 15px; }
+  nav a:hover { color: var(--fg); }
+  .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; padding: 40px 0 56px; }
+  h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.1; margin: 0 0 16px; letter-spacing: -.02em; }
+  h1 span { color: var(--accent); }
+  .lead { font-size: 19px; color: var(--muted); margin: 0 0 26px; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn { display: inline-block; padding: 12px 20px; border-radius: 10px; font-weight: 600; text-decoration: none; border: 1px solid var(--line); color: var(--fg); background: var(--card); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--ink); }
+  .badges { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .badges span { border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+  .shot { width: 100%; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 20px 50px rgba(0,0,0,.25); display: block; }
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 30px; margin: 0 0 8px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 18px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  figure { margin: 0; }
+  figure img { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+  figcaption { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 14px; }
+  .steps li { counter-increment: s; position: relative; padding: 14px 16px 14px 56px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  .steps li::before { content: counter(s); position: absolute; left: 16px; top: 13px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--ink); font-weight: 700; display: grid; place-items: center; font-size: 15px; }
+  code { font: 14px ui-monospace, Consolas, monospace; background: var(--card); border: 1px solid var(--line); padding: 1px 6px; border-radius: 6px; }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { color: var(--muted); margin: 10px 0 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 15.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 14px; }
+  footer { padding: 30px 0 50px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+  .note { font-size: 13px; color: var(--muted); margin-top: 14px; }
+  @media (max-width: 900px) { .hero, .grid, .gallery { grid-template-columns: 1fr; } nav a:not(.gh) { display: none; } .hero { padding-top: 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><img src="icon.png" alt="" width="30" height="30">SOCLens</a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a><a href="#sources">Intel sources</a><a href="#install">Install</a><a href="#faq">FAQ</a>
+      <a class="gh" href="https://github.com/kazisohan-cyber/soclens">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>Investigate any IOC in <span>one right-click</span>.</h1>
+        <p class="lead">SOCLens is a free browser extension for SOC analysts. Select an IP, domain, URL, file hash or CVE on any page, in Securonix, SentinelOne, HaloPSA or a raw log, and get an explainable verdict from 15 threat-intel sources, with what to do next and a ready ticket note.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/kazisohan-cyber/soclens/releases/latest">Download free</a>
+          <a class="btn" href="https://github.com/kazisohan-cyber/soclens">View source on GitHub</a>
+        </div>
+        <div class="badges"><span>Free &amp; open source (Apache-2.0)</span><span>Runs locally, no account</span><span>Chrome &amp; Edge</span></div>
+      </div>
+      <img class="shot" src="screenshots/01-investigate.jpg" width="701" height="1645" alt="SOCLens analyst panel: a pasted Securonix alert with six indicators, an overall malicious verdict and client context from memory" style="max-height:620px;object-fit:cover;object-position:top">
+    </div>
+
+    <section id="features">
+      <h2>Built for L1 and L2 analysts</h2>
+      <p class="sub">Less tab-hopping and copy-pasting: the checks an analyst does by hand for every alert, in one place.</p>
+      <div class="grid">
+        <div class="card"><h3>Right-click → Investigate</h3><p>Paste or select anything, even a whole alert or defanged log line. Every indicator gets a verdict, a confidence level, plain-English reasons and next steps.</p></div>
+        <div class="card"><h3>Explainable verdicts</h3><p>Every verdict shows which source said what (VirusTotal, AbuseIPDB, GreyNoise, CISA KEV…). It recognises Tor exits, lookalike domains, new registrations and known infrastructure.</p></div>
+        <div class="card"><h3>One-click ticket notes</h3><p>A formatted note for HaloPSA or any ticketing tool, with verdicts, findings, recommended actions and defanged indicators, in HTML, plain text or Markdown.</p></div>
+        <div class="card"><h3>Email header analysis</h3><p>Paste headers to see SPF, DKIM and DMARC, delivery path and hop delays, the originating IP, and Reply-To and display-name tricks (BEC patterns). Fully on the device.</p></div>
+        <div class="card"><h3>Client memory for MSSPs</h3><p>Remember what is normal per client: VPN ranges, ASNs, countries, service accounts, hostnames. Notes expire, so stale knowledge is never trusted silently.</p></div>
+        <div class="card"><h3>SentinelOne import</h3><p>Import Threats, Endpoints or Data Lake exports. Triaged hashes and endpoint inventory become client notes, and internal IPs map to hostnames.</p></div>
+        <div class="card"><h3>IOC highlighting</h3><p>Indicators on SOC consoles are underlined by client memory and past verdicts. Click one for a verdict. The console's page is never modified.</p></div>
+        <div class="card"><h3>Safe detonation</h3><p>See a screenshot of a suspicious link through urlscan.io without opening it in your browser.</p></div>
+        <div class="card"><h3>Phishing protection</h3><p>Blocks fake login pages and lookalike domains, flags phishing emails in Gmail and Outlook on the web, and stops your work password being typed on other sites.</p></div>
+      </div>
+    </section>
+
+    <section id="screenshots">
+      <h2>See it in action</h2>
+      <p class="sub">Screenshots use sample data (documentation IP ranges, demo domains, the EICAR test file, public CVE data).</p>
+      <div class="gallery">
+        <figure><img src="screenshots/02-verdicts.jpg" width="701" height="2002" loading="lazy" alt="Verdict cards for a phishing URL, a file hash and CVE-2024-3400 with reasons and sources" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Verdicts with reasons and sources</figcaption></figure>
+        <figure><img src="screenshots/03-email-headers.jpg" width="701" height="1475" loading="lazy" alt="Email header analysis showing SPF fail, DMARC fail and a Reply-To BEC warning" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Email header analysis</figcaption></figure>
+        <figure><img src="screenshots/04-client-memory.jpg" width="701" height="1432" loading="lazy" alt="Client memory notes for a client: VPN range, service account, hostname and ASN" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Client memory with owner and expiry</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="sources">
+      <h2>15 intel sources, your keys, your browser</h2>
+      <p class="sub">Only the indicator is sent, directly from your browser to each service. There's no SOCLens server in between.</p>
+      <table>
+        <thead><tr><th>Needs no key</th><th>Free API key</th></tr></thead>
+        <tbody><tr>
+          <td>GreyNoise · Shodan InternetDB · ipinfo · RDAP domain age · DNS · CISA KEV · FIRST EPSS · NVD · local lookalike &amp; brand analysis</td>
+          <td>VirusTotal (free tier queued automatically) · AbuseIPDB · abuse.ch: URLhaus, ThreatFox, MalwareBazaar · urlscan.io</td>
+        </tr></tbody>
+      </table>
+    </section>
+
+    <section id="install">
+      <h2>Install in one minute</h2>
+      <ol class="steps">
+        <li>Download <code>soclens-extension-v*.zip</code> from the <a href="https://github.com/kazisohan-cyber/soclens/releases/latest">latest release</a> and unzip it.</li>
+        <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code>), turn on <b>Developer mode</b>, click <b>Load unpacked</b> and pick the unzipped folder.</li>
+        <li>Select any indicator on a page, right-click, then <b>SOCLens: Investigate</b>. Optional: add free VirusTotal and AbuseIPDB keys in the panel's 2-minute setup.</li>
+      </ol>
+    </section>
+
+    <section id="faq">
+      <h2>FAQ</h2>
+      <details><summary>Is SOCLens free?</summary><p>Yes, free and open source under Apache 2.0. Eight intel sources work with no key; VirusTotal, AbuseIPDB, abuse.ch and urlscan.io need a free key from each provider.</p></details>
+      <details><summary>Does it send my data anywhere?</summary><p>No SOCLens server is involved. Everything runs in your browser. When you investigate, only the indicator goes to each intel service. Email content, passwords and browsing history never leave the device. See the <a href="https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md">privacy policy</a>.</p></details>
+      <details><summary>Does it work with Securonix, SentinelOne or HaloPSA?</summary><p>Yes. Investigate any text you select in those consoles, highlight the indicators on them, paste ticket notes into HaloPSA with formatting kept, and import SentinelOne CSV exports into client memory.</p></details>
+      <details><summary>Can my company deploy it centrally?</summary><p>Yes. Settings can be pushed through Chrome or Edge policy (GPO / Intune). An optional self-hosted console adds SOC reporting, threat feeds and sign-in verification.</p></details>
+      <details><summary>Which browsers are supported?</summary><p>Google Chrome and Microsoft Edge, version 116 or later.</p></details>
+    </section>
+  </main>
+
+  <footer>
+    SOCLens by OpsVantage · <a href="https://github.com/kazisohan-cyber/soclens">Source</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md">Privacy</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/CHANGELOG.md">Changelog</a>
+  </footer>
+</div>
+</body>
+</html>
