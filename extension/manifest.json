@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SOCLens – SOC Analyst Assistant & Phishing Protection",
-  "short_name": "SOCLens",
-  "version": "0.6.0",
+  "name": "IOC Triage – IOC Lookup, Threat Intel & SOC Analyst Assistant",
+  "short_name": "IOC Triage",
+  "version": "0.8.0",
   "description": "Instant verdicts for any IP, domain, URL, hash or CVE, ticket notes, email header analysis, and phishing protection.",
   "author": "OpsVantage",
   "minimum_chrome_version": "116",
@@ -23,7 +23,7 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "SOCLens",
+    "default_title": "IOC Triage",
     "default_popup": "pages/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

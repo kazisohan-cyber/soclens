@@ -1,5 +1,5 @@
 /*
- * SOCLens client memory (v2): what is normal for each client, written by analysts.
+ * IOC Triage client memory (v2): what is normal for each client, written by analysts.
  *
  * Entry: { id, kind, ioc, client, verdict, note, ticket, by, created, updated, expires }
  *   kind     ioc     IP, CIDR, domain (subdomains included), URL, email or hash

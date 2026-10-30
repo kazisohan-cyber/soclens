@@ -99,3 +99,9 @@ pre.sent { margin: 6px 0 0; padding: 6px 8px; max-height: 220px; overflow: auto;
 .byo-btns button { padding: 4px 8px; font-size: 12px; }
 .byo-out { margin-top: 6px; }
 .byo-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.hist { margin-top: 6px; padding: 6px 8px; border-radius: 6px; background: var(--bg); font-size: 12px; overflow-wrap: anywhere; }
+.hist .link { padding: 0 2px; font-size: 12px; }
+.tech a { font-size: 11px; }
+.att, .lnk { padding: 5px 0; border-top: 1px solid var(--line); font-size: 12px; overflow-wrap: anywhere; }
+.att .mono, .lnk .mono { font-size: 11px; }
+#blockOut:empty { display: none; }

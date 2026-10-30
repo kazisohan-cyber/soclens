@@ -1,5 +1,5 @@
 /*
- * SOCLens webmail scanner (Gmail + Outlook on the web).
+ * IOC Triage webmail scanner (Gmail + Outlook on the web).
  * Reads the open message locally, asks the service worker for a verdict, then:
  *  - shows a warning banner above a suspicious email,
  *  - disables dangerous links (they can no longer be opened from the email),
@@ -65,7 +65,7 @@
     a.dataset.vsReasons = JSON.stringify(info.reasons.slice(0, 5));
     a.removeAttribute('href');
     a.removeAttribute('data-saferedirecturl');
-    a.setAttribute('title', 'Disabled by SOCLens — dangerous link');
+    a.setAttribute('title', 'Disabled by IOC Triage — dangerous link');
     a.setAttribute('aria-disabled', 'true');
     a.style.cssText += ';text-decoration:line-through !important;color:#b42318 !important;cursor:not-allowed !important;';
   }
@@ -75,7 +75,7 @@
     a.dataset.vsReal = info.real;
     a.dataset.vsReasons = JSON.stringify(info.reasons.slice(0, 5));
     a.style.cssText += ';outline:2px dashed #f5a524 !important;outline-offset:1px;';
-    a.setAttribute('title', 'SOCLens: suspicious link — you will be asked before it opens');
+    a.setAttribute('title', 'IOC Triage: suspicious link — you will be asked before it opens');
   }
 
   // Intercept before the webmail app's own handlers (window capture runs first).
@@ -90,7 +90,7 @@
     const report = { label: 'Report to security', onClick: (close, b) => { UI.send({ type: 'report', kind: 'email', url: real, links: [real] }); b.textContent = 'Reported ✓'; b.disabled = true; } };
     const copy = { label: 'Copy defanged URL', onClick: (close, b) => { navigator.clipboard.writeText(UI.defang(real)).then(() => { b.textContent = 'Copied ✓'; }); } };
     if (a.dataset.vsBlocked) {
-      UI.modal({ level: 'block', title: 'This link has been disabled', text: 'SOCLens blocked this link because it is very likely phishing.', reasons, meta: UI.defang(real),
+      UI.modal({ level: 'block', title: 'This link has been disabled', text: 'IOC Triage blocked this link because it is very likely phishing.', reasons, meta: UI.defang(real),
         actions: [{ label: 'Close', kind: 'primary', onClick: (close) => close() }, report, copy] });
     } else {
       UI.modal({ level: 'warn', title: 'Open this link?', text: 'This link looks suspicious. Only continue if you trust the sender and expected this message.', reasons, meta: UI.defang(real),

@@ -1,5 +1,5 @@
 /*
- * SOCLens IOC toolkit: find indicators in text (fanged or defanged), refang/defang them,
+ * IOC Triage IOC toolkit: find indicators in text (fanged or defanged), refang/defang them,
  * classify a single value, and tell private from public IPs.
  * Pure functions (no chrome.*): shared by the service worker, the analyst panel, the page
  * highlighter and the test page.

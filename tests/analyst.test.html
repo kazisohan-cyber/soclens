@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>SOCLens analyst tests</title>
+<title>IOC Triage analyst tests</title>
 <style>
   body { font: 13px/1.5 ui-monospace, Consolas, monospace; margin: 16px; background: #fff; color: #111; }
   .pass { color: #067647; } .fail { color: #b42318; font-weight: 700; }
@@ -12,7 +12,7 @@
 </style>
 </head>
 <body>
-<h1>SOCLens analyst tests (IOC parser, verdict engine, ticket notes, email headers)</h1>
+<h1>IOC Triage analyst tests (IOC parser, verdict engine, ticket notes, email headers)</h1>
 <div id="summary"></div>
 <div id="out"></div>
 <script src="../extension/lib/analyzer.js"></script>
@@ -25,6 +25,11 @@
 <script src="../extension/lib/hunt.js"></script>
 <script src="../extension/lib/triage.js"></script>
 <script src="../extension/lib/ai.js"></script>
+<script src="../extension/lib/cases.js"></script>
+<script src="../extension/lib/eml.js"></script>
+<script src="../extension/lib/mitre.js"></script>
+<script src="../extension/lib/blocklist.js"></script>
+<script src="../extension/lib/teamfile.js"></script>
 <script>
 const I = VSIoc, E = VSEngine, HD = VSHeaders;
 let pass = 0, fail = 0, html = '';
@@ -365,9 +370,135 @@ section('Recent activity');
 
 document.getElementById('summary').innerHTML = `<span class="${fail ? 'fail' : 'pass'}">${pass} passed, ${fail} failed</span>`;
 document.getElementById('out').innerHTML = html;
-document.title = `${fail ? 'FAIL' : 'PASS'} ${pass}/${pass + fail} SOCLens analyst tests`;
+document.title = `${fail ? 'FAIL' : 'PASS'} ${pass}/${pass + fail} IOC Triage analyst tests`;
 
 (async () => {
+  section('Decision memory');
+  {
+    const C = VSCases, now = Date.now();
+    const item = (id, ticket, value, verdict, client) => C.fromInvestigation([{ report: { type: 'ipv4', value }, a: { verdict } }], { id, now, client: client || 'A', ticket, overall: verdict });
+    let r = C.upsert([], item('1', 'INC-1', '203.0.113.5', 'benign'), now);
+    let l = C.setDecision(r.list, '1', 'False positive: closed', now);
+    r = C.upsert(l, item('2', 'INC-1', '203.0.113.5', 'benign'), now + 1000);
+    check('re-running the same alert updates the case and keeps the decision', r.list.length === 1 && r.item.id === '1' && r.item.decision === 'False positive: closed');
+    r = C.upsert(r.list, item('3', 'INC-2', '203.0.113.5', 'benign'), now);
+    l = C.setDecision(r.list, '3', 'Benign true positive: closed', now);
+    l = C.upsert(l, item('4', 'INC-3', '203.0.113.5', 'benign'), now).list;
+    l = C.setDecision(l, '4', 'False positive: closed', now);
+    let hist = C.history(l, '203.0.113.5', 'A');
+    check('history counts benign closes', hist.total === 3 && hist.benign === 3, C.describeHistory(hist));
+    check('history is scoped to the client', C.history(l, '203.0.113.5', 'B').total === 0);
+    check('the current case is left out of its own history', C.history(l, '203.0.113.5', 'A', '4').total === 2);
+    check('three benign closes offer a note', C.suggestsNote(hist, 'benign'));
+    check('never offers a note on a flagged verdict', !C.suggestsNote(hist, 'malicious'));
+    const tp = C.setDecision(l, '3', 'True positive: escalated', now);
+    check('a true positive stops the offer', !C.suggestsNote(C.history(tp, '203.0.113.5', 'A'), 'benign'));
+    const old = C.upsert([C.normalize({ id: 'old', at: now - 200 * 864e5, updated: now - 200 * 864e5, iocs: [] })], item('5', 'INC-9', '203.0.113.9', 'benign'), now);
+    check('cases older than 180 days are dropped', !old.list.some((c) => c.id === 'old'));
+    const h = C.handover(tp, { from: now - 1000, to: now + 5000, analyst: 'Rafi', client: 'A' });
+    check('handover counts', h.counts.total === 3 && h.counts.escalated === 1 && h.counts.closed === 2, JSON.stringify(h.counts));
+    check('handover lists the escalation under attention', h.open.length === 1 && /NEEDS ATTENTION:\n- .*INC-2/.test(h.text));
+    check('handover defangs indicators', h.text.includes('203[.]0[.]113[.]5') && !h.text.includes('203.0.113.5'));
+    const m = C.merge(l, [{ id: '1', updated: now + 9e6, at: now, decision: 'True positive: contained', iocs: [] }, { id: 'new', at: now, iocs: [] }, { nope: 1 }], now);
+    check('merge: newest wins, new added, junk ignored', m.added === 1 && m.updated === 1 && m.list.find((c) => c.id === '1').decision === 'True positive: contained');
+  }
+
+  section('.eml triage');
+  {
+    const X = VSEml;
+    const enc = (s) => new TextEncoder().encode(s);
+    const attach = btoa('MZ not really a program');
+    const mail = ['From: "Microsoft Security" <a@micros0ft-login.example>', 'Reply-To: x@other.example', 'To: u@client.example', 'Subject: =?utf-8?B?' + btoa('Urgent: invoice') + '?=',
+      'Authentication-Results: mx; spf=fail smtp.mailfrom=micros0ft-login.example; dkim=none; dmarc=fail header.from=micros0ft-login.example', 'Content-Type: multipart/mixed; boundary="b1"', '',
+      '--b1', 'Content-Type: multipart/alternative; boundary="b2"', '', '--b2', 'Content-Type: text/plain; charset=utf-8', 'Content-Transfer-Encoding: quoted-printable', '', 'See https://plain-link.example/a=3D1', '--b2',
+      'Content-Type: text/html; charset=utf-8', '', '<script>window.__emlRan = 1<\/script><img src="https://tracker.example/p.gif"><a href="https://micros0ft-login.example/x">https://portal.office.example/</a><a href="mailto:a@b.example">m</a>', '--b2--',
+      '--b1', 'Content-Type: application/octet-stream', 'Content-Disposition: attachment; filename="invoice.pdf.exe"', 'Content-Transfer-Encoding: base64', '', attach, '--b1',
+      'Content-Type: image/png', 'Content-Disposition: inline; filename="logo.png"', 'Content-ID: <l1>', 'Content-Transfer-Encoding: base64', '', btoa('png'), '--b1--', ''].join('\r\n');
+    const r = await X.analyze(enc(mail));
+    check('parses a nested multipart email', r.ok && r.attachments.length === 1 && r.urls.length === 2, JSON.stringify(r.urls.map((u) => u.real)));
+    check('decodes the encoded subject', r.subject === 'Urgent: invoice', r.subject);
+    check('decodes quoted-printable links', r.urls.some((u) => u.real === 'https://plain-link.example/a=1'));
+    check('finds link text that differs from its target', r.urls.find((u) => u.real.includes('micros0ft')).mismatch);
+    check('flags a double extension', r.attachments[0].name === 'invoice.pdf.exe' && r.attachments[0].flags.some((f) => /double/i.test(f)));
+    const expected = [...new Uint8Array(await crypto.subtle.digest('SHA-256', enc('MZ not really a program')))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    check('hashes the decoded attachment', r.attachments[0].sha256 === expected);
+    check('skips inline signature images', !r.attachments.some((a) => a.name === 'logo.png'));
+    check('verdict is malicious', r.verdict === 'malicious', r.verdict);
+    check('the email script never ran', !window.__emlRan);
+    check('indicators include hash, link and origin data', r.iocs.includes(expected) && r.iocs.includes('https://micros0ft-login.example/x'));
+    check('findings are defanged', !X.findings(r).includes('https://micros0ft-login.example') && X.findings(r).includes('hxxps'));
+    check('reply template warns on malicious', /phishing attempt/.test(X.replyTemplate('malicious', {})));
+    check('reply template reassures on benign', /no signs of phishing/.test(X.replyTemplate('benign', {})));
+    const clean = await X.analyze(enc('From: "Pat" <pat@good.example>\r\nSubject: hi\r\nAuthentication-Results: mx; spf=pass; dkim=pass; dmarc=pass header.from=good.example\r\n\r\nJust text, no links.\r\n'));
+    check('a clean email raises no flags', clean.ok && !clean.reasons.length && clean.verdict === 'benign', clean.verdict);
+    check('a non-email file is refused', !(await X.analyze(enc('random bytes with no headers'))).ok);
+    check('odd file names stay inert', (await X.analyze(enc('From: a@b.example\r\nContent-Type: application/pdf; name="<img src=x onerror=1>.pdf"\r\nContent-Disposition: attachment\r\n\r\nx'))).attachments[0].name.includes('<img'));
+    const f = VSMitre.forEmail(r).map((t) => t.id);
+    check('email maps to phishing techniques', f.includes('T1566.001') && f.includes('T1566.002') && f.includes('T1036.007'), f.join(','));
+  }
+
+  section('MITRE ATT&CK');
+  {
+    const M = VSMitre;
+    const it = (group, verdict, bad) => ({ report: { group, type: group, value: 'x' }, a: { verdict, reasons: bad.map((t) => ({ kind: 'bad', t })) } });
+    const ids = (items, text) => M.map(items, { text }).map((t) => t.id);
+    check('benign evidence maps to nothing', ids([it('ip', 'benign', [])], 'powershell').length === 0);
+    check('keywords alone map to nothing', ids([], 'powershell and rdp').length === 0);
+    check('known-bad hash', ids([it('hash', 'malicious', ['VirusTotal'])]).includes('T1204.002'));
+    check('impersonating URL', ids([it('url', 'malicious', ['Impersonation signals'])]).includes('T1566.002'));
+    check('CVE', ids([it('cve', 'critical', ['Used in ransomware campaigns'])]).join() === 'T1190,T1486');
+    check('Tor and scanner', ids([it('ip', 'suspicious', ['Tor exit node (x)', 'GreyNoise: malicious internet scanner'])]).join() === 'T1595,T1090.003', ids([it('ip', 'suspicious', ['Tor exit node (x)', 'GreyNoise: malicious internet scanner'])]).join());
+    check('alert keywords add techniques', ids([it('ip', 'malicious', [])], 'powershell.exe ran after RDP').join() === 'T1059.001,T1021.001');
+    check('technique links are correct', M.map([it('hash', 'malicious', [])])[0].url === 'https://attack.mitre.org/techniques/T1204/002/');
+    const note = E.ticketNote([{ report: { type: 'ipv4', group: 'ip', value: '198.51.100.1', sources: {} }, a: { verdict: 'malicious', confidence: 'high', reasons: [], actions: [] } }], { mitre: ['T1110 Brute Force (Credential Access)'] });
+    check('ticket note carries the mapping', note.text.includes('Possible ATT&CK: T1110') && note.markdown.includes('T1110') && note.html.includes('T1110'));
+  }
+
+  section('Block list export');
+  {
+    const B = VSBlocklist;
+    const it = (type, group, value, verdict, extra) => ({ report: Object.assign({ type, group, value }, extra), a: { verdict, confidence: 'high', reasons: [{ kind: 'bad', t: '=cmd reason' }] } });
+    const items = [it('ipv4', 'ip', '198.51.100.7', 'malicious'), it('ipv4', 'ip', '10.0.0.5', 'malicious', { internal: true }), it('domain', 'domain', 'bad.example', 'suspicious'), it('url', 'url', 'https://evil-host.example/a?b=1', 'malicious'),
+      it('sha256', 'hash', 'A'.repeat(64), 'malicious'), it('md5', 'hash', 'b'.repeat(32), 'malicious'), it('cve', 'cve', 'CVE-2024-1', 'critical'), it('ipv4', 'ip', '8.8.8.8', 'benign'), it('email', 'email', "o'brien@bad.example", 'malicious')];
+    const { entries, skipped } = B.build(items);
+    const vals = entries.map((e) => e.value);
+    check('leaves out benign, internal, CVE and unflagged', !vals.includes('8.8.8.8') && !vals.includes('10.0.0.5') && !vals.includes('CVE-2024-1') && !vals.includes('bad.example') && skipped === 4, vals.join(' '));
+    check('suspicious only on request', B.build(items, { includeSuspicious: true }).entries.some((e) => e.value === 'bad.example'));
+    const R = (f) => B.render(f, B.build(items, { includeSuspicious: true }).entries, { ticket: 'INC-1', now: Date.UTC(2026, 0, 1) });
+    check('IP list', R('ips') === '198.51.100.7');
+    check('domain list adds the bad URL host', R('domains') === 'bad.example\nevil-host.example', R('domains'));
+    check('URL list has no scheme', R('urls') === 'evil-host.example/a?b=1');
+    check('hash list is SHA-256 only, lowercase', R('hashes') === 'a'.repeat(64));
+    const d = R('defender').trim().split('\r\n');
+    check('Defender CSV header and types', d[0].startsWith('indicatorType,indicatorValue,expirationTime,action') && d.some((x) => x.startsWith('IpAddress,198.51.100.7,2026-04-01T00:00:00.0Z,Block,High')) && d.some((x) => x.startsWith('FileSha256,')));
+    check('Defender CSV leaves out MD5 and email', !d.some((x) => x.includes('bbbbbbbb') || x.includes('brien')));
+    check('CSV stops spreadsheet formulas', R('csv').includes(",'=cmd reason,"), R('csv').split('\r\n')[1]);
+    const s = JSON.parse(R('stix'));
+    check('STIX bundle is well formed', s.type === 'bundle' && /^bundle--/.test(s.id) && s.objects.every((o) => o.type === 'indicator' && o.spec_version === '2.1' && o.pattern_type === 'stix' && /^indicator--/.test(o.id) && o.valid_from));
+    check('STIX patterns', s.objects.some((o) => o.pattern === "[ipv4-addr:value = '198.51.100.7']") && s.objects.some((o) => o.pattern === "[file:hashes.'SHA-256' = '" + 'A'.repeat(64) + "']"));
+    check('STIX escapes quotes', s.objects.some((o) => o.pattern === "[email-addr:value = 'o\\'brien@bad.example']"), s.objects.map((o) => o.pattern).join(' '));
+  }
+
+  section('Team memory file');
+  {
+    const T = VSTeamFile;
+    const opts = { iterations: T.MIN_ITERATIONS };
+    const pass = 'correct horse battery';
+    const text = await T.encrypt({ notes: [{ ioc: 'secret-client-host' }] }, pass, opts);
+    check('the file holds no plain text', !text.includes('secret-client-host'));
+    const back = await T.decrypt(text, pass);
+    check('round trip', back.notes[0].ioc === 'secret-client-host');
+    const fails = async (fn) => { try { await fn(); return ''; } catch (e) { return e.message; } };
+    check('wrong passphrase fails', /Wrong passphrase/.test(await fails(() => T.decrypt(text, 'wrong passphrase here'))));
+    const f = JSON.parse(text);
+    const flipped = JSON.stringify(Object.assign({}, f, { data: (f.data[0] === 'A' ? 'B' : 'A') + f.data.slice(1) }));
+    check('a changed file fails', /Wrong passphrase/.test(await fails(() => T.decrypt(flipped, pass))));
+    check('a short passphrase is refused', /at least/.test(await fails(() => T.encrypt({}, 'short', opts))));
+    check('weak settings in a file are refused', /unsafe/.test(await fails(() => T.decrypt(JSON.stringify(Object.assign({}, f, { kdf: Object.assign({}, f.kdf, { iterations: 10 }) })), pass))));
+    check('other files are refused', /not an IOC Triage/.test(await fails(() => T.decrypt('{"a":1}', pass))));
+    check('two exports differ', (await T.encrypt({ a: 1 }, pass, opts)) !== (await T.encrypt({ a: 1 }, pass, opts)));
+  }
+
   const A = VSAi;
   const seen = {};
   const fake = async (url, init) => { seen.url = url; seen.init = init; return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: 'OK' }] }) }; };
@@ -379,7 +510,7 @@ document.title = `${fail ? 'FAIL' : 'PASS'} ${pass}/${pass + fail} SOCLens analy
   for (const [n, c] of lines) check(n, c);
   document.getElementById('summary').innerHTML = `<span class="${fail_count() ? 'fail' : 'pass'}">${pass} passed, ${fail_count()} failed</span>`;
   document.getElementById('out').innerHTML = html;
-  document.title = `${fail_count() ? 'FAIL' : 'PASS'} ${pass}/${pass + fail_count()} SOCLens analyst tests`;
+  document.title = `${fail_count() ? 'FAIL' : 'PASS'} ${pass}/${pass + fail_count()} IOC Triage analyst tests`;
 })();
 function fail_count() { return fail; }
 </script>

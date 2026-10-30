@@ -20,11 +20,11 @@ In scope:
 
 Out of scope:
 - vulnerabilities in third-party intel services (VirusTotal, AbuseIPDB, abuse.ch, urlscan.io, GreyNoise, Shodan, ipinfo)
-- phishing pages SOCLens does not detect: please report those as a normal issue so detection can be improved
+- phishing pages IOC Triage does not detect: please report those as a normal issue so detection can be improved
 - issues that need an already compromised device or browser profile
 
 ## Known limits (by design, documented)
 
 - API keys entered in the analyst panel are stored in the browser's extension storage, readable by anyone with access to that browser profile.
 - In the console, every browser of a tenant shares the tenant API key unless it enrolled through the community flow.
-- SOCLens proves which browser signed in, not who sits at it. Malware on the device still needs EDR.
+- IOC Triage proves which browser signed in, not who sits at it. Malware on the device still needs EDR.

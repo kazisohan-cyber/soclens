@@ -1,4 +1,4 @@
-/* SOCLens in-page UI: banners and dialogs rendered in closed Shadow DOM so pages can't restyle or read them. */
+/* IOC Triage in-page UI: banners and dialogs rendered in closed Shadow DOM so pages can't restyle or read them. */
 (function () {
   'use strict';
   if (window.__VSUI) return;
@@ -77,7 +77,7 @@
       }
       body.appendChild(act);
     }
-    body.appendChild(el('div', 'brand', 'SOCLens'));
+    body.appendChild(el('div', 'brand', 'IOC Triage'));
     card.appendChild(body);
     if (mode === 'modal') {
       const ov = el('div', 'overlay');

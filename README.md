@@ -1,4 +1,6 @@
-# SOCLens: SOC analyst assistant & phishing protection
+# IOC Triage: SOC analyst assistant & phishing protection
+
+*Formerly SOCLens.*
 
 **Select any IP, domain, URL, hash or CVE → right-click → Investigate.** One verdict from up to 15 intel sources, in plain words, with what to do next. Then copy a ready ticket note.
 
@@ -14,19 +16,20 @@ Free, open source, privacy-first. A Chrome / Edge extension (Manifest V3) by Ops
 
 ## Install (1 minute)
 
-1. Download `soclens-extension-v*.zip` from the [latest release](https://github.com/kazisohan-cyber/soclens/releases/latest) and unzip it.
+1. Download `ioc-triage-extension-v*.zip` from the [latest release](https://github.com/kazisohan-cyber/soclens/releases/latest) and unzip it.
 2. Open `chrome://extensions` (or `edge://extensions`) → turn on **Developer mode** → **Load unpacked** → pick the unzipped folder.
-3. Select any indicator on a page → right-click → **SOCLens: Investigate**. Optional: add free VirusTotal / AbuseIPDB keys in the panel's setup card (2 minutes) for known-bad verdicts.
+3. On the welcome page, read what is handled and click **Agree and turn on** for browsing protection. The analyst panel works without it.
+4. Select any indicator on a page → right-click → **IOC Triage: Investigate**. Optional: add free VirusTotal / AbuseIPDB keys in the panel's setup card (2 minutes) for known-bad verdicts.
 
 ## Screenshots
 
 | | |
 |---|---|
 | ![Investigate](docs/screenshots/01-investigate.jpg)<br>**Paste a whole alert.** Every indicator is checked; client memory adds context (accounts, hosts, VPN ranges). | ![Verdicts](docs/screenshots/02-verdicts.jpg)<br>**Explainable verdicts.** Reasons, the sources behind them, and next steps for URLs, hashes and CVEs. |
-| ![Email headers](docs/screenshots/03-email-headers.jpg)<br>**Email header analysis, on the device.** SPF / DKIM / DMARC, BEC patterns, delivery path. | ![Client memory](docs/screenshots/04-client-memory.jpg)<br>**Client memory.** What is normal per client, with owner, ticket and expiry. |
+| ![Email headers](docs/screenshots/03-email-headers.jpg)<br>**Reported phishing, on the device.** Open an `.eml` file: risky attachments, deceptive links, SPF / DKIM / DMARC, BEC patterns. | ![Client memory](docs/screenshots/04-client-memory.jpg)<br>**Client memory.** What is normal per client, with owner, ticket and expiry. |
 | ![Popup](docs/screenshots/05-popup.jpg)<br>**Phishing protection + health.** Blocks fake logins, says what needs attention. | ![Highlighting](docs/screenshots/06-highlighting.jpg)<br>**IOC highlighting on SOC consoles.** Coloured by client memory and past verdicts; click for a verdict. |
 
-<sub>Screenshots use sample data: documentation IP ranges (RFC 5737), `.example` / demo domains, the EICAR test file and public CVE data. Reproduce them with `tests/analyst-preview.html?demo=1`.</sub>
+<sub>Screenshots use sample data: documentation IP ranges (RFC 5737), `.example` / demo domains, the EICAR test file and public CVE data. Rebuild them with `node docs/store/tools/capture-site-images.mjs`, or try the panel at `tests/analyst-preview.html?demo=1`.</sub>
 
 ## What it does
 
@@ -50,13 +53,19 @@ An independent analyst toolkit inside the same extension. You don't need a serve
 | **IOC highlighting** | On analyst sites (Securonix, HaloPSA, SentinelOne, Defender, Azure... editable), indicators are underlined: red malicious, orange suspicious, green known-good, blue client note, grey internal. Click one for a popover verdict. It uses the CSS Highlight API, so the SOC console's DOM is never modified, and no lookup runs until you click. | `content/ioc-highlight.js` |
 | **One-click ticket note** | Copies a formatted note into HaloPSA or any ticket, as HTML with formatting kept, plain text, or Markdown. The note has the overall verdict, a per-indicator verdict with key findings, recommended actions, which sources were and weren't checked, and defanged indicators. | `lib/engine.js` `ticketNote()` |
 | **Safe detonation + header analyzer** | Detonation scans a URL in urlscan.io (unlisted) and shows a screenshot, the final page, server, brands targeted and the verdict; your browser never opens the page. The header analyzer runs **fully on the device** on pasted headers: SPF/DKIM/DMARC, delivery path with hop delays, originating IP, Reply-To / display-name / brand mismatches (BEC patterns), spam verdicts, and one click to investigate the IOCs it finds. | `lib/sources.js` `detonate()`, `lib/headers.js` |
-| **Client memory** | Teach SOCLens what is normal per client: indicators (IP, CIDR, domain incl. subdomains, URL, email, hash), **networks (ASN)**, **countries**, **accounts** and **hostnames**. Pick the **active client** at the top of the panel, and only that client's notes (plus all-client notes) are used. Every note records who, when and which ticket, and **expires** (default 90 days) so stale knowledge is never trusted silently. Exact-indicator notes weigh most, ASN less, country only lowers suspicion; strong public intel overrides a "benign" note and is flagged. Accounts and hostnames found in pasted alert text appear as **client context**, also in the ticket note. Export or import as JSON to share across the team. | `lib/memory.js`, `lib/sources.js` |
+| **Client memory** | Teach IOC Triage what is normal per client: indicators (IP, CIDR, domain incl. subdomains, URL, email, hash), **networks (ASN)**, **countries**, **accounts** and **hostnames**. Pick the **active client** at the top of the panel, and only that client's notes (plus all-client notes) are used. Every note records who, when and which ticket, and **expires** (default 90 days) so stale knowledge is never trusted silently. Exact-indicator notes weigh most, ASN less, country only lowers suspicion; strong public intel overrides a "benign" note and is flagged. Accounts and hostnames found in pasted alert text appear as **client context**, also in the ticket note. Export or import as JSON to share across the team. | `lib/memory.js`, `lib/sources.js` |
 | **EDR import (SentinelOne)** | Memory tab → **Import from your EDR** → pick a SentinelOne **Threats**, **Endpoints** or **Data Lake** CSV export. Hashes the client already triaged become notes (false positive → benign, true positive → malicious, repeats merged); endpoints become hostname notes (OS, domain, last user) with their egress IP and internal IPs mapped to the hostname. You review and tick categories before anything is saved; re-importing a newer export updates notes instead of duplicating them. The file is read only in the browser. | `lib/importers.js` |
 | **Hunt queries** | One click copies a ready query (last 30 days) for one indicator or all of them: SentinelOne Deep Visibility, Microsoft Defender, Microsoft Sentinel, Splunk, Securonix Spotter. Values are escaped so alert text cannot change the query. | `lib/hunt.js` |
 | **Close or escalate** | Suggests Escalate, Investigate first, Close or Needs more information, with the reasons. It never suggests closing when a lookup failed, an indicator is unknown or an internal asset is unidentified. You record the decision on the ticket note, and **Copy escalation note** writes the hand-over for L2. | `lib/triage.js` |
+| **Decision memory** | Every investigation and your decision are recorded locally. A result shows what happened last time ("Seen 4 times before: 3 closed as benign"), the note carries it, and after three benign closes IOC Triage offers a client note. History never changes a verdict. Kept 180 days; clear it on the Shift tab. | `lib/cases.js` |
+| **Phishing triage (`.eml`)** | Email tab → **Open .eml**: header analysis, links with real destinations, deceptive link text, attachment SHA-256 hashes and risky file types. Copy findings, or a reply to the person who reported it. Read on the device and never displayed: scripts don't run and remote images don't load. | `lib/eml.js` |
+| **Shift handover** | Shift tab: a report from your investigations and decisions, with what needs attention first. | `lib/cases.js` |
+| **Team memory** | Memory tab: share notes and decisions as an AES-256-GCM encrypted file with a passphrase, no server. You review a file before merging it. | `lib/teamfile.js` |
+| **MITRE ATT&CK mapping** | Possible techniques from the evidence and the alert's wording, in the panel and on ticket and escalation notes. Labelled as possible; benign evidence maps to nothing. | `lib/mitre.js` |
+| **Block list export** | Flagged indicators as lists for firewall, DNS, web proxy and EDR, a Microsoft Defender indicators CSV, CSV or STIX 2.1. Benign, internal and unflagged indicators and CVEs are left out. You deploy it yourself. | `lib/blocklist.js` |
 | **Your own AI (optional)** | Off by default. Connect OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, Ollama / LM Studio or any OpenAI-compatible endpoint for a summary, next checks or a client email draft. Sends only when you click, shows exactly what goes out, never sends your pasted alert, masks client data by default and can exclude clients. It never changes a verdict. | `lib/ai.js` |
 
-**Intel sources.** These need no key: GreyNoise community, Shodan InternetDB, ipinfo, RDAP (domain age), DNS (Cloudflare DoH), CISA KEV, FIRST EPSS, NVD, SOCLens lookalike/brand analysis, and the SOCLens phishing feed (when connected to a console). Free key, set in panel → Settings: VirusTotal (free tier 4/min: extra lookups queue and fill in automatically), AbuseIPDB, abuse.ch (URLhaus, ThreatFox, MalwareBazaar), urlscan.io. Keys are stored only in the browser. Requests go straight from the browser to each source with **only the indicator**, never page content. Results are cached (6–24 h) to save quotas. If the browser has a built-in on-device model (Chrome Prompt API), the panel adds a short AI summary drawn only from the evidence. Without one, SOCLens' own reasoning writes the summary. Your own AI, if you connect one, is separate and only runs when you click.
+**Intel sources.** These need no key: GreyNoise community, Shodan InternetDB, ipinfo, RDAP (domain age), DNS (Cloudflare DoH), CISA KEV, FIRST EPSS, NVD, IOC Triage lookalike/brand analysis, and the IOC Triage phishing feed (when connected to a console). Free key, set in panel → Settings: VirusTotal (free tier 4/min: extra lookups queue and fill in automatically), AbuseIPDB, abuse.ch (URLhaus, ThreatFox, MalwareBazaar), urlscan.io. Keys are stored only in the browser. Requests go straight from the browser to each source with **only the indicator**, never page content. Results are cached (6–24 h) to save quotas. If the browser has a built-in on-device model (Chrome Prompt API), the panel adds a short AI summary drawn only from the evidence. Without one, IOC Triage' own reasoning writes the summary. Your own AI, if you connect one, is separate and only runs when you click.
 
 The verdict logic is in `lib/engine.js` (`assess()`): weighted signals → malicious / suspicious / benign / unknown / internal, plus confidence from how many independent sources agree. CVEs get a priority instead (critical if in CISA KEV). Well-known infrastructure (public DNS resolvers, Google), Tor exits, hosting networks, new domains, lookalikes and free-webmail senders are recognised without any key.
 
@@ -65,11 +74,11 @@ The verdict logic is in `lib/engine.js` (`assess()`): weighted signals → malic
 1. Open `chrome://extensions` (or `edge://extensions`) → enable **Developer mode**.
 2. **Load unpacked** → select the `extension/` folder.
 3. Sign in once at `login.microsoftonline.com` so credential guard learns the password (popup shows "Active").
-4. Analyst tools: right-click any selected text → **SOCLens: Investigate**, or toolbar popup → **Analyst panel**.
+4. Analyst tools: right-click any selected text → **IOC Triage: Investigate**, or toolbar popup → **Analyst panel**.
 
 Tests: serve this folder (`python -m http.server 8765`) and open:
 - `http://localhost:8765/tests/analyzer.test.html`: 58 analyzer cases.
-- `tests/analyst.test.html`: 153 cases for the IOC parser, verdict engine, client memory, EDR import, ticket notes, header analyzer, activity list, hunt queries, triage suggestions and the AI connector.
+- `tests/analyst.test.html`: 211 cases for the IOC parser, verdict engine, client memory, EDR import, ticket notes, header analyzer, activity list, hunt queries, triage suggestions, the AI connector, decision memory, `.eml` triage, MITRE mapping, block lists and team memory files.
 - `tests/mock-webmail.html`: email UI.
 - `tests/analyst-preview.html`: the real side panel against the live free APIs (GreyNoise and CISA KEV are blocked by CORS on localhost only). Add `?demo=1` for the sample data used in the screenshots.
 - `tests/highlight-preview.html`: IOC highlighting on a fake SOC console.

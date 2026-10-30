@@ -1,5 +1,5 @@
 /*
- * SOCLens analyzer — pure, dependency-free URL / domain / email heuristics.
+ * IOC Triage analyzer — pure, dependency-free URL / domain / email heuristics.
  * Loaded by the service worker (importScripts), content scripts, and the test page.
  * No network, no chrome.* calls: everything here is deterministic and testable.
  */

@@ -1,5 +1,5 @@
 /*
- * SOCLens "your own AI": optional drafting help through a provider the analyst chooses.
+ * IOC Triage "your own AI": optional drafting help through a provider the analyst chooses.
  * Nothing is sent unless the analyst clicks a button, and only computed evidence goes out: never the
  * pasted alert. Evidence can hold attacker-written text (file names, page titles), so it is passed as
  * data and the answer is always shown as a draft. The AI never changes a verdict.

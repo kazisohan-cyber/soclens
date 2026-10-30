@@ -1,5 +1,5 @@
 /*
- * SOCLens service worker: navigation guard, page verdicts, credential guard,
+ * IOC Triage service worker: navigation guard, page verdicts, credential guard,
  * email verdicts, event log + SOC reporting, remote blocklist sync, domain-age lookups.
  */
 importScripts('lib/analyzer.js', 'lib/config.js', 'lib/ioc.js', 'lib/memory.js', 'lib/engine.js', 'lib/sources.js');
@@ -13,9 +13,18 @@ const PBKDF2_ITER = 100000;
 // ------------------------------------------------------------- config ---
 
 let cfgPromise = null;
-function cfg() { return (cfgPromise = cfgPromise || VSConfig.get()); }
+function cfg() { return (cfgPromise = cfgPromise || VSConfig.get().then(applyConsent)); }
+
+// Browsing protection reads pages, email and password fields, so it waits for the user's agreement on the
+// welcome page. An admin's browser policy counts as the organisation's decision. The analyst panel only acts on request.
+async function applyConsent(c) {
+  const { dataConsent } = await chrome.storage.local.get('dataConsent');
+  c.agreed = !!dataConsent || c._managed.length > 0;
+  if (!c.agreed) Object.assign(c, { credentialGuard: false, webmailScanner: false, pageScanner: false, domainAgeLookup: false });
+  return c;
+}
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'managed' || ['settings', 'userAllowed', 'remoteBlock', 'remotePolicy', 'enrollment', 'consent'].some((k) => k in changes)) cfgPromise = null;
+  if (area === 'managed' || ['settings', 'userAllowed', 'remoteBlock', 'remotePolicy', 'enrollment', 'consent', 'dataConsent'].some((k) => k in changes)) cfgPromise = null;
 });
 
 async function installId() {
@@ -33,7 +42,7 @@ async function setVerdict(tabId, v) {
   try {
     await chrome.action.setBadgeBackgroundColor({ tabId, color });
     await chrome.action.setBadgeText({ tabId, text });
-    await chrome.action.setTitle({ tabId, title: `SOCLens — ${labelOf(v.level)}${v.score ? ' (' + v.score + ')' : ''}` });
+    await chrome.action.setTitle({ tabId, title: `IOC Triage — ${labelOf(v.level)}${v.score ? ' (' + v.score + ')' : ''}` });
   } catch (_) { /* tab gone */ }
 }
 async function getVerdict(tabId) { return (await chrome.storage.session.get('tab:' + tabId))['tab:' + tabId] || null; }
@@ -58,6 +67,7 @@ function blockPageUrl(v, kind) {
 chrome.webNavigation.onBeforeNavigate.addListener(async (d) => {
   if (d.frameId !== 0 || d.tabId < 0 || !/^https?:/i.test(d.url)) return;
   const c = await cfg();
+  if (!c.agreed) return;
   const v = A.analyzeUrl(d.url, c);
   if (!v.allow && await isBypassed(v.host)) { v.bypassed = true; v.level = 'warn'; }
   await setVerdict(d.tabId, v);
@@ -106,13 +116,27 @@ function trustedForCreds(host, c) {
   return A.hostInList(host, c.corporateDomains) || A.hostInList(host, c.corporateLoginDomains) || A.hostInList(host, c.allowedDomains);
 }
 
+// Sites the user allowed from the password warning. Exact host only, and only the credential guard
+// stands down there: phishing checks keep running, unlike "Always allow".
+async function credAllowedByUser(host) {
+  const { credTrustedHosts = [] } = await chrome.storage.local.get('credTrustedHosts');
+  return credTrustedHosts.includes(host);
+}
+
+// The warning never offers "trust" on a page IOC Triage already finds suspicious, or when an admin forbids it.
+async function canTrustForCreds(url, tabId, c) {
+  if (!c.allowUserBypass) return false;
+  const seen = tabId != null ? await getVerdict(tabId) : null;
+  return ![A.analyzeUrl(url, c).level, seen && seen.level].some((l) => l === 'warn' || l === 'block');
+}
+
 async function credContext(host) {
   const c = await cfg();
   const { creds = [] } = await chrome.storage.local.get('creds');
   return {
     enabled: c.credentialGuard,
     enrollHere: c.credentialGuard && (A.hostInList(host, c.corporateLoginDomains) || A.hostInList(host, c.corporateDomains)),
-    trusted: trustedForCreds(host, c),
+    trusted: trustedForCreds(host, c) || await credAllowedByUser(host),
     lens: [...new Set(creds.map((x) => x.len))]
   };
 }
@@ -129,18 +153,28 @@ async function credEnroll(host, value) {
   return true;
 }
 
-async function credCheck(host, url, value) {
+async function credCheck(host, url, value, tabId) {
   const c = await cfg();
-  if (!c.credentialGuard || typeof value !== 'string' || trustedForCreds(host, c)) return { match: false };
+  if (!c.credentialGuard || typeof value !== 'string' || trustedForCreds(host, c) || await credAllowedByUser(host)) return { match: false };
   const { creds = [] } = await chrome.storage.local.get('creds');
   for (const x of creds) {
     if (x.len === value.length && await pbkdf2(value, x.salt) === x.hash) {
       logEvent({ type: 'credential_reuse_blocked', severity: 'critical', url, host,
         reasons: ['Corporate password typed on a site outside the organisation'] });
-      return { match: true };
+      return { match: true, notified: reportsOn(c), canTrust: await canTrustForCreds(url, tabId, c) };
     }
   }
   return { match: false };
+}
+
+async function credTrust(url, tabId) {
+  const c = await cfg();
+  const host = hostOf(url);
+  if (!host || !await canTrustForCreds(url, tabId, c)) return { ok: false };
+  const { credTrustedHosts = [] } = await chrome.storage.local.get('credTrustedHosts');
+  if (!credTrustedHosts.includes(host)) await chrome.storage.local.set({ credTrustedHosts: credTrustedHosts.concat(host) });
+  logEvent({ type: 'user_trusted_site', severity: 'medium', url, host, reasons: ['User allowed their work password on this site'] });
+  return { ok: true };
 }
 
 // ------------------------------------------------------- events + SOC ---
@@ -293,9 +327,9 @@ function setupAlarms() {
 }
 chrome.runtime.onInstalled.addListener((d) => {
   setupAlarms();
-  // First install: ask for consent before anything is sent (unless an admin configured a backend).
-  if (d.reason === 'install') {
-    cfg().then((c) => { if (c.mode !== 'managed') chrome.tabs.create({ url: chrome.runtime.getURL('pages/welcome.html') }); });
+  // First install, or an update from a version that never asked: show what is read and ask.
+  if (d.reason === 'install' || d.reason === 'update') {
+    cfg().then((c) => { if (!c.agreed) chrome.tabs.create({ url: chrome.runtime.getURL('pages/welcome.html') }); });
   }
 });
 chrome.runtime.onStartup.addListener(setupAlarms);
@@ -308,7 +342,7 @@ chrome.alarms.onAlarm.addListener((a) => {
 
 // ------------------------------------------------- SOC analyst assistant ---
 // Right-click "Investigate", side panel, IOC highlighting on analyst sites. Lookups go from this
-// browser straight to the intel sources; nothing passes through any SOCLens server.
+// browser straight to the intel sources; nothing passes through any IOC Triage server.
 
 function setupAnalyst() {
   if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch(() => {});
@@ -320,9 +354,9 @@ function setupAnalyst() {
       condition: { requestDomains: ['api.greynoise.io'], tabIds: [-1], resourceTypes: ['xmlhttprequest', 'other'] } }] }).catch(() => {});
   }
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: 'sl-investigate', title: 'SOCLens: Investigate "%s"', contexts: ['selection'] });
-    chrome.contextMenus.create({ id: 'sl-investigate-link', title: 'SOCLens: Investigate this link', contexts: ['link'] });
-    chrome.contextMenus.create({ id: 'sl-panel', title: 'SOCLens: Open analyst panel', contexts: ['page', 'action'] });
+    chrome.contextMenus.create({ id: 'sl-investigate', title: 'IOC Triage: Investigate "%s"', contexts: ['selection'] });
+    chrome.contextMenus.create({ id: 'sl-investigate-link', title: 'IOC Triage: Investigate this link', contexts: ['link'] });
+    chrome.contextMenus.create({ id: 'sl-panel', title: 'IOC Triage: Open analyst panel', contexts: ['page', 'action'] });
   });
 }
 
@@ -351,7 +385,7 @@ async function onAnalystSite(url) {
   return !!host && s.highlight && A.hostInList(host, s.highlightSites);
 }
 
-// ----------------------------------------------- SOCLens Verify (v0.3) ---
+// ----------------------------------------------- IOC Triage Verify (v0.3) ---
 // Records sign-ins on identity-provider pages only (never other browsing), sends a heartbeat so the
 // console knows the browser was online, and shows "Was this you?" prompts for SIEM identity alerts.
 
@@ -524,7 +558,7 @@ async function promptVerify(vr) {
   await chrome.storage.local.set({ verifyShown });
   try {
     chrome.notifications.create('verify:' + vr.id, {
-      type: 'basic', iconUrl: chrome.runtime.getURL('icons/icon128.png'), title: 'SOCLens: was this you?',
+      type: 'basic', iconUrl: chrome.runtime.getURL('icons/icon128.png'), title: 'IOC Triage: was this you?',
       message: vr.prompt, contextMessage: 'Your security team is asking. Only answer here, never in an email.',
       buttons: [{ title: 'Yes, it was me' }, { title: 'No, not me' }], requireInteraction: true, priority: 2
     });
@@ -604,7 +638,8 @@ const handlers = {
 
   async credContext(msg, sender) { return credContext(hostOf(sender.url)); },
   async credEnroll(msg, sender) { return credEnroll(hostOf(sender.url), msg.value); },
-  async credCheck(msg, sender) { return credCheck(hostOf(sender.url), sender.url, msg.value); },
+  async credCheck(msg, sender) { return credCheck(hostOf(sender.url), sender.url, msg.value, sender.tab && sender.tab.id); },
+  async credTrust(msg, sender) { return credTrust(sender.url, sender.tab && sender.tab.id); },
 
   async scanEmail(msg) {
     const c = await cfg();
@@ -668,7 +703,7 @@ const handlers = {
       blocklistSize: remoteBlock && remoteBlock.domains ? remoteBlock.domains.length : 0, blocklistAt: remoteBlock ? remoteBlock.t : 0,
       pageScanner: c.pageScanner, webmailScanner: c.webmailScanner, verifyEnabled: c.verifyEnabled, communityAvailable: !!c.communityEndpoint,
       loginDomain: (c.corporateLoginDomains || [])[0] || '', credLearned: creds[0] ? { host: creds[0].host, ts: creds[0].ts } : null,
-      oldestQueued: queue.length ? Date.parse(queue[0].ts) || 0 : 0
+      oldestQueued: queue.length ? Date.parse(queue[0].ts) || 0 : 0, agreed: c.agreed
     };
   },
 
@@ -709,7 +744,7 @@ const handlers = {
   // ---- SOC analyst assistant
   async investigate(msg, sender) {
     const fromPage = !(sender.url && sender.url.startsWith(chrome.runtime.getURL('')));
-    if (fromPage && !(await onAnalystSite(sender.url))) return { error: 'SOCLens analyst tools are not enabled on this site' };
+    if (fromPage && !(await onAnalystSite(sender.url))) return { error: 'IOC Triage analyst tools are not enabled on this site' };
     return VSSources.investigate(String(msg.value || '').slice(0, 4096), await cfg());
   },
   async detonate(msg) { return VSSources.detonate(String(msg.value || '').slice(0, 4096)); },
@@ -732,6 +767,12 @@ const handlers = {
 
   async exportEvents() { return (await chrome.storage.local.get('events')).events || []; },
   async clearCreds() { await chrome.storage.local.remove('creds'); return { ok: true }; },
+  async setDataConsent(msg) {
+    if (msg.agree) await chrome.storage.local.set({ dataConsent: { at: Date.now() } });
+    else await chrome.storage.local.remove(['dataConsent', 'creds']);
+    return { ok: true };
+  },
+  async protectionState() { return { agreed: (await cfg()).agreed }; },
   async flushNow() { await syncAll(); await flush(); await flushAuth(); await heartbeat(); return { ok: true }; }
 };
 
@@ -742,7 +783,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (!h) return false;
   // Privileged actions only from our own extension pages.
   const fromExtensionPage = sender.url && sender.url.startsWith(chrome.runtime.getURL(''));
-  if (['bypass', 'trustSite', 'popupState', 'setConsent', 'verifyState', 'verifyAnswer', 'exportEvents', 'clearCreds', 'flushNow',
+  if (['bypass', 'trustSite', 'popupState', 'setConsent', 'setDataConsent', 'verifyState', 'verifyAnswer', 'exportEvents', 'clearCreds', 'flushNow',
     'detonate', 'testKey', 'analystSettings', 'analystSave', 'memoryList', 'memorySave', 'memoryDelete', 'memoryImport', 'memoryUpsert', 'memoryConfirm', 'memoryContext'].includes(msg.type) && !fromExtensionPage) { reply(null); return false; }
   Promise.resolve(h(msg, sender)).then(reply, (e) => reply({ error: String(e && e.message || e) }));
   return true;

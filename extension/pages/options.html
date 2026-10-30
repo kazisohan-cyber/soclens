@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SOCLens Settings</title>
+<title>IOC Triage Settings</title>
 <link rel="stylesheet" href="common.css">
 <style>
   main { width: min(760px, 100%); margin: 0 auto; padding: 24px 16px 48px; }
@@ -29,8 +29,8 @@
 </head>
 <body>
 <main>
-  <header><img src="../icons/icon48.png" alt=""><h1>SOCLens settings</h1></header>
-  <p class="muted" id="managedNote" hidden>Some settings are managed by your organisation or the SOCLens console and cannot be changed here.</p>
+  <header><img src="../icons/icon48.png" alt=""><h1>IOC Triage settings</h1></header>
+  <p class="muted" id="managedNote" hidden>Some settings are managed by your organisation or the IOC Triage console and cannot be changed here.</p>
 
   <section class="card">
     <h2>Protection</h2>
@@ -66,7 +66,7 @@
       <label class="f">User / device label <input type="text" data-k="userId"></label>
     </div>
     <label class="f">API key <input type="password" data-k="apiKey" autocomplete="off"></label>
-    <label class="f">Community server <span class="hint">(optional: a self-enrolling SOCLens community console, https only. Leave empty to keep everything on this device.)</span><input type="url" data-k="communityEndpoint" placeholder="https://soclens.example.org"></label>
+    <label class="f">Community server <span class="hint">(optional: a self-enrolling IOC Triage community console, https only. Leave empty to keep everything on this device.)</span><input type="url" data-k="communityEndpoint" placeholder="https://ioc-triage.example.org"></label>
     <div class="row" style="margin-top:12px"><button id="sync">Send events &amp; sync blocklist now</button><span class="muted" id="syncState"></span></div>
   </section>
 
@@ -74,6 +74,10 @@
     <h2>Credential guard data</h2>
     <p class="muted" id="credState">—</p>
     <div class="row"><button id="clearCreds">Forget learned password</button></div>
+    <p class="muted" id="consentState" style="margin-top:12px">—</p>
+    <div class="row"><button id="consentToggle">—</button></div>
+    <p class="muted" id="credTrustedState" style="margin-top:12px">—</p>
+    <div id="credTrustedList"></div>
   </section>
 
   <section class="card">

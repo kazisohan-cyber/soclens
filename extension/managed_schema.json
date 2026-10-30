@@ -3,7 +3,7 @@
   "properties": {
     "apiEndpoint": {
       "title": "SOC API endpoint",
-      "description": "Base URL of the SOCLens backend, e.g. https://shield.example.com. Events go to POST /v1/events, blocklist from GET /v1/blocklist.",
+      "description": "Base URL of the IOC Triage backend, e.g. https://shield.example.com. Events go to POST /v1/events, blocklist from GET /v1/blocklist.",
       "type": "string"
     },
     "apiKey": {
@@ -115,13 +115,13 @@
       "type": "boolean"
     },
     "verifyEnabled": {
-      "title": "SOCLens Verify",
+      "title": "IOC Triage Verify",
       "description": "Record sign-ins on identity-provider pages (Microsoft, Google, Okta, corporate login domains) and send heartbeats, so the console can answer 'was this really the user?' for SIEM identity alerts. Shows 'Was this you?' prompts.",
       "type": "boolean"
     },
     "communityEndpoint": {
       "title": "Community server",
-      "description": "Optional self-enrolling SOCLens community console (https). Empty = no community server.",
+      "description": "Optional self-enrolling IOC Triage community console (https). Empty = no community server.",
       "type": "string"
     }
   }

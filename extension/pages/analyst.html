@@ -3,20 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SOCLens Analyst</title>
+<title>IOC Triage Analyst</title>
 <link rel="stylesheet" href="common.css">
 <link rel="stylesheet" href="analyst.css">
 </head>
 <body>
 <header class="top">
   <img src="../icons/icon32.png" alt="">
-  <div class="brand"><b>SOCLens</b> <span>Analyst</span></div>
+  <div class="brand"><b>IOC Triage</b> <span>Analyst</span></div>
   <span class="muted small" id="srcCount"></span>
 </header>
 <nav class="tabs" role="tablist">
   <button role="tab" data-tab="investigate" aria-selected="true">Investigate</button>
-  <button role="tab" data-tab="headers">Headers</button>
+  <button role="tab" data-tab="headers">Email</button>
   <button role="tab" data-tab="memory">Memory</button>
+  <button role="tab" data-tab="shift">Shift</button>
   <button role="tab" data-tab="settings">Settings</button>
 </nav>
 
@@ -42,6 +43,7 @@
       <span class="muted small" id="ovTime"></span>
     </div>
     <div id="triage" class="triage" hidden></div>
+    <div id="mitre" class="ctx" hidden></div>
     <div id="ai" class="ai" hidden></div>
     <div id="byo" class="ai" hidden></div>
     <div id="clientCtx" class="ctx" hidden></div>
@@ -53,6 +55,18 @@
     </div>
     <label class="f">Your decision <span class="muted small">(goes on the ticket note)</span><select id="decision"></select></label>
     <div id="huntAll" class="hunt small" hidden></div>
+    <details id="blockBox" hidden>
+      <summary>Export block list</summary>
+      <div class="grid2" style="margin-top:6px">
+        <select id="blockFormat" title="List format"></select>
+        <label class="toggle" style="margin:4px 0"><input type="checkbox" id="blockSuspicious"><span>Include suspicious</span></label>
+      </div>
+      <pre id="blockOut" class="sent"></pre>
+      <div class="row between" style="margin-top:6px">
+        <span class="muted small" id="blockState"></span>
+        <span><button id="blockCopy">Copy</button> <button id="blockSave">Download</button></span>
+      </div>
+    </details>
     <div class="muted small" id="copyState"></div>
   </div>
   <div id="results"></div>
@@ -61,7 +75,13 @@
 <!-- ============================================================ Headers -->
 <section class="tab" id="tab-headers" hidden>
   <div class="card compact">
-    <textarea id="hdr" rows="7" spellcheck="false" placeholder="Paste the full email headers (Outlook: File > Properties > Internet headers; Gmail: ⋮ > Show original)."></textarea>
+    <div class="row between">
+      <span><b>Reported phishing</b><br><span class="muted small">Open a saved .eml file: headers, links and attachment hashes. Read on this device only, and the email is never displayed.</span></span>
+      <label class="btn" for="emlFile">Open .eml</label><input id="emlFile" type="file" accept=".eml,message/rfc822" hidden>
+    </div>
+  </div>
+  <div class="card compact">
+    <textarea id="hdr" rows="7" spellcheck="false" placeholder="Or paste the full email headers (Outlook: File > Properties > Internet headers; Gmail: ⋮ > Show original)."></textarea>
     <div class="row between"><span class="muted small">Analysed on this device. Nothing is sent anywhere.</span><button class="primary" id="hdrGo">Analyse headers</button></div>
   </div>
   <div id="hdrOut"></div>
@@ -70,7 +90,7 @@
 <!-- ============================================================ Memory -->
 <section class="tab" id="tab-memory" hidden>
   <div class="card compact">
-    <p class="muted small" style="margin:0 0 8px">Teach SOCLens what is normal for each client. Notes show up in verdicts, highlighting and ticket notes. They expire, so stale knowledge is never trusted silently.</p>
+    <p class="muted small" style="margin:0 0 8px">Teach IOC Triage what is normal for each client. Notes show up in verdicts, highlighting and ticket notes. They expire, so stale knowledge is never trusted silently.</p>
     <div class="grid2">
       <select id="mKind" title="What kind of thing to remember">
         <option value="auto">Indicator (IP, CIDR, domain, URL, email, hash)</option>
@@ -102,12 +122,40 @@
     </div>
     <div id="edrReview"></div>
   </div>
+  <div class="card compact">
+    <b>Team memory</b><br><span class="muted small">Share notes and decisions as an encrypted file, with no server. Send the file and the passphrase by different channels.</span>
+    <input id="teamPass" type="password" autocomplete="off" placeholder="Passphrase (at least 12 characters)" style="margin-top:8px">
+    <label class="toggle" style="margin:6px 0"><input type="checkbox" id="teamCases" checked><span>Include decision history</span></label>
+    <div class="row between">
+      <span class="muted small" id="teamState"></span>
+      <span><button id="teamExport">Export encrypted</button> <label class="btn" for="teamFile">Open file</label><input id="teamFile" type="file" accept=".ioctriage,application/json" hidden></span>
+    </div>
+    <div id="teamReview"></div>
+  </div>
   <div class="row between">
     <input id="mFilter" type="search" placeholder="Search notes" style="flex:1">
     <button id="mExport">Export</button>
     <label class="btn" for="mImportFile">Import</label><input id="mImportFile" type="file" accept="application/json" hidden>
   </div>
   <div id="mList"></div>
+</section>
+
+<!-- ============================================================ Shift -->
+<section class="tab" id="tab-shift" hidden>
+  <div class="card compact">
+    <div class="grid2">
+      <select id="shiftRange" title="Which part of the day to report">
+        <option value="8">Last 8 hours</option><option value="12">Last 12 hours</option><option value="24">Last 24 hours</option><option value="today">Since midnight</option>
+      </select>
+      <button class="primary" id="shiftCopy">Copy handover</button>
+    </div>
+    <p class="muted small" id="shiftCounts" style="margin:4px 0 0"></p>
+    <pre id="shiftOut" class="sent"></pre>
+    <div class="row between" style="margin-top:6px">
+      <span class="muted small" id="shiftState">Built from investigations and decisions on this device, kept for 180 days. Your active client filters it.</span>
+      <button class="link" id="shiftClear">Clear history</button>
+    </div>
+  </div>
 </section>
 
 <!-- ============================================================ Settings -->
@@ -156,6 +204,11 @@
 <script src="../lib/hunt.js"></script>
 <script src="../lib/triage.js"></script>
 <script src="../lib/ai.js"></script>
+<script src="../lib/cases.js"></script>
+<script src="../lib/eml.js"></script>
+<script src="../lib/mitre.js"></script>
+<script src="../lib/blocklist.js"></script>
+<script src="../lib/teamfile.js"></script>
 <script src="analyst.js"></script>
 </body>
 </html>

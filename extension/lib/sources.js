@@ -1,9 +1,9 @@
 /*
- * SOCLens intel sources (service worker). Looks one indicator up in many places at once, with a
+ * IOC Triage intel sources (service worker). Looks one indicator up in many places at once, with a
  * per-source cache, and hands the result to VSEngine.assess().
  *
  * No key needed:  GreyNoise community, Shodan InternetDB, ipinfo, RDAP, DNS (Cloudflare DoH),
- *                 CISA KEV, FIRST EPSS, NVD, SOCLens local analysis + client memory.
+ *                 CISA KEV, FIRST EPSS, NVD, IOC Triage local analysis + client memory.
  * Free API key:   VirusTotal, AbuseIPDB, abuse.ch (URLhaus, ThreatFox, MalwareBazaar), urlscan.io.
  * Keys stay in this browser (storage.local) and requests go straight from the browser to the source.
  * Only the indicator itself is sent, never page content.
@@ -323,7 +323,7 @@
   }
 
   async function memoryImport(items) {
-    if (!Array.isArray(items)) throw new Error('Expected a JSON array exported from SOCLens');
+    if (!Array.isArray(items)) throw new Error('Expected a JSON array exported from IOC Triage');
     const list = await memoryList();
     const byId = new Map(list.map((m) => [m.id, m]));
     let added = 0, updated = 0;
@@ -445,7 +445,7 @@
     if (!url) return { error: 'Detonation needs a URL or domain' };
     if (!s.keys.urlscan) return { status: 'nokey', url, unwrapped: url !== c.value ? url : '' };
     const sub = await http('https://urlscan.io/api/v1/scan/', { method: 'POST', headers: { 'API-Key': s.keys.urlscan, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, visibility: 'unlisted', tags: ['soclens'] }), timeout: 15000 });
+      body: JSON.stringify({ url, visibility: 'unlisted', tags: ['ioc-triage'] }), timeout: 15000 });
     if (sub.status !== 200 || !sub.json || !sub.json.uuid) {
       return { status: 'error', error: (sub.json && (sub.json.message || sub.json.description)) || sub.error || ('HTTP ' + sub.status), url };
     }
@@ -527,7 +527,7 @@
       const lastV = l && l.exp > Date.now() ? l.verdict : '';
       const internal = v.group === 'ip' && I.isPrivateIp(v.value);
       const state = m ? (m.verdict === 'note' ? 'known' : m.verdict) : feed ? 'malicious' : lastV || (internal ? 'internal' : '');
-      return { value: v.value, state, note: m ? m._desc : feed ? 'In SOCLens phishing feed' : '' };
+      return { value: v.value, state, note: m ? m._desc : feed ? 'In IOC Triage phishing feed' : '' };
     });
   }
 

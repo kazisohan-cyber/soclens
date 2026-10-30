@@ -14,7 +14,7 @@
         : 'Connected. Protection is on and reports are shared. Thank you! You can close this tab.';
     } else {
       $('result').className = 'err';
-      $('result').textContent = 'Saved. The console could not be reached right now, so SOCLens protects you on this device and will connect later by itself.';
+      $('result').textContent = 'Saved. The console could not be reached right now, so IOC Triage protects you on this device and will connect later by itself.';
     }
   }
 
@@ -28,6 +28,23 @@
     });
   });
   $('openSettings').addEventListener('click', () => chrome.runtime.openOptionsPage());
+
+  async function showConsent() {
+    const c = await VSConfig.get();
+    const { dataConsent } = await chrome.storage.local.get('dataConsent');
+    const admin = c._managed.length > 0;
+    $('consentCard').hidden = !!dataConsent || admin;
+    $('agreedCard').hidden = !dataConsent;
+  }
+  $('agree').addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'setDataConsent', agree: true });
+    showConsent();
+  });
+  $('decline').addEventListener('click', () => {
+    $('consentCard').hidden = true;
+    $('declinedNote').hidden = false;
+  });
+  showConsent();
 
   // The community offer only exists when a community server is configured (none is built in).
   VSConfig.get().then((c) => {

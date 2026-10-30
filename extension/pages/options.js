@@ -25,9 +25,31 @@
       }
     }
     $('managedNote').hidden = !cfg._managed.length && !cfg._remote.length;
-    $('modeNote').textContent = cfg.mode === 'community' ? 'Connected to SOCLens community protection (automatic). Fill these in only to use your own SOC instead.'
+    $('modeNote').textContent = cfg.mode === 'community' ? 'Connected to IOC Triage community protection (automatic). Fill these in only to use your own SOC instead.'
       : cfg.mode === 'managed' ? 'Connected to your SOC with the details below.' : 'Not connected: everything runs on this device. Enter your company console details to send alerts to your SOC.';
-    const { creds = [], events = [], queue = [], lastSync = 0 } = await chrome.storage.local.get(['creds', 'events', 'queue', 'lastSync']);
+    const { creds = [], events = [], queue = [], lastSync = 0, credTrustedHosts = [] } = await chrome.storage.local.get(['creds', 'events', 'queue', 'lastSync', 'credTrustedHosts']);
+    const { dataConsent } = await chrome.storage.local.get('dataConsent');
+    const policySet = cfg._managed.length > 0;
+    $('consentState').textContent = policySet ? 'Browsing protection is set by your organisation.'
+      : dataConsent ? `You agreed to browsing protection on ${new Date(dataConsent.at).toLocaleDateString()}.` : 'Browsing protection is off until you agree.';
+    $('consentToggle').hidden = policySet;
+    $('consentToggle').textContent = dataConsent ? 'Turn off and forget learned password' : 'Review and turn on';
+    $('credTrustedState').textContent = credTrustedHosts.length ? 'Your work password is allowed on these sites:' : 'No sites are allowed to receive your work password.';
+    $('credTrustedList').textContent = '';
+    for (const host of credTrustedHosts) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      const name = document.createElement('span');
+      name.textContent = host;
+      const remove = document.createElement('button');
+      remove.textContent = 'Remove';
+      remove.addEventListener('click', async () => {
+        await chrome.storage.local.set({ credTrustedHosts: credTrustedHosts.filter((h) => h !== host) });
+        load();
+      });
+      row.append(name, remove);
+      $('credTrustedList').append(row);
+    }
     $('credState').textContent = creds.length
       ? `Protecting ${creds.length} password${creds.length > 1 ? 's' : ''} (learned ${new Date(creds[0].ts).toLocaleString()} on ${creds[0].host}).`
       : 'No work password learned yet — sign in once on a corporate login page.';
@@ -68,12 +90,20 @@
     load();
   });
 
+  $('consentToggle').addEventListener('click', async () => {
+    const { dataConsent } = await chrome.storage.local.get('dataConsent');
+    if (!dataConsent) { chrome.tabs.create({ url: chrome.runtime.getURL('pages/welcome.html') }); return; }
+    if (!confirm('Turn off browsing protection and delete the learned password hash? The analyst panel keeps working.')) return;
+    await chrome.runtime.sendMessage({ type: 'setDataConsent', agree: false });
+    load();
+  });
+
   $('export').addEventListener('click', async () => {
     const events = await chrome.runtime.sendMessage({ type: 'exportEvents' });
     const blob = new Blob([JSON.stringify(events, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `soclens-events-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `ioc-triage-events-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });

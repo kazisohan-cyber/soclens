@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Welcome to SOCLens</title>
+<title>Welcome to IOC Triage</title>
 <link rel="stylesheet" href="common.css">
 <style>
   main { width: min(680px, 100%); margin: 0 auto; padding: 32px 16px 48px; }
@@ -27,18 +27,49 @@
 </head>
 <body>
 <main>
-  <header><img src="../icons/icon48.png" alt=""><h1>Welcome to SOCLens</h1></header>
-  <p class="lead">SOCLens is already protecting this browser: it blocks phishing sites, warns on phishing emails in Gmail and Outlook, and stops your password being typed on fake login pages.</p>
+  <header><img src="../icons/icon48.png" alt=""><h1>Welcome to IOC Triage</h1></header>
+  <p class="lead">IOC Triage blocks phishing sites, warns on phishing emails in Gmail and Outlook, stops your password being typed on fake login pages, and gives SOC analysts instant verdicts.</p>
+
+  <section class="card" id="consentCard" hidden>
+    <h2>Turn on browsing protection</h2>
+    <p style="margin:0 0 10px">To protect you, IOC Triage has to read some of your data. Please read this first. Protection stays off until you agree.</p>
+    <div class="two">
+      <div>
+        <h2>Read and kept on this device</h2>
+        <ul>
+          <li>The address of each page you open, to check it for phishing</li>
+          <li>The text of pages with a password field, to spot fake logins</li>
+          <li>Emails you open in Gmail and Outlook on the web, to spot phishing</li>
+          <li>Your work password when you sign in on a work login page. Only a salted hash is stored, and it is compared with what you type in password fields</li>
+        </ul>
+      </div>
+      <div>
+        <h2>Can leave this device</h2>
+        <ul>
+          <li>For an already suspicious site, its domain name goes to rdap.org to check the domain's age</li>
+          <li>Nothing else, unless you or your admin connect a console</li>
+        </ul>
+        <p class="muted" style="margin:10px 0 0">No analytics, no tracking, no ads and no sale of data.</p>
+      </div>
+    </div>
+    <div class="choices"><button class="primary" id="agree">Agree and turn on</button><button id="decline">Not now</button></div>
+    <p class="muted" style="margin:10px 0 0;font-size:12px">You can withdraw this any time in Settings. <a href="https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md" target="_blank" rel="noopener">Privacy policy</a></p>
+  </section>
+  <p class="muted" id="declinedNote" hidden>Browsing protection stays off. The analyst panel below still works, and you can turn protection on from the toolbar button.</p>
+  <section class="card" id="agreedCard" hidden>
+    <h2 style="color:var(--ok)">Browsing protection is on</h2>
+    <p class="muted" style="margin:0">You can turn it off any time in Settings.</p>
+  </section>
 
   <section class="card" id="localCard">
     <h2>Private by design</h2>
-    <p class="muted" style="margin:0">Every check runs on this device. SOCLens sends nothing to any server unless you, or your company's admin, connect it to a SOCLens console.</p>
+    <p class="muted" style="margin:0">Phishing checks run on this device. When you investigate an indicator, only that indicator goes to the intel services. Nothing else is sent unless you connect your own AI or a company console.</p>
   </section>
 
   <section class="card" id="analystCard">
     <h2>Work in a SOC? Meet the analyst panel</h2>
     <ul style="margin:6px 0 12px;padding-left:18px">
-      <li>Select any IP, domain, URL, hash or CVE, right-click, <b>SOCLens: Investigate</b>: one verdict from 8 free intel sources</li>
+      <li>Select any IP, domain, URL, hash or CVE, right-click, <b>IOC Triage: Investigate</b>: one verdict from 8 free intel sources</li>
       <li>One-click ticket notes, email header analysis, safe link detonation, and client memory</li>
       <li>Add free VirusTotal and AbuseIPDB keys (2 minutes) for known-bad verdicts</li>
     </ul>
@@ -46,15 +77,15 @@
   </section>
 
   <section class="card" id="communityCard" hidden>
-    <h2>Free SOCLens community protection</h2>
-    <p class="muted" style="margin:0 0 10px">Connect to the SOCLens community service to receive a list of new phishing sites (updated four times a day). You can also share what SOCLens blocks, so everyone in the community is protected sooner.</p>
+    <h2>Free IOC Triage community protection</h2>
+    <p class="muted" style="margin:0 0 10px">Connect to the IOC Triage community service to receive a list of new phishing sites (updated four times a day). You can also share what IOC Triage blocks, so everyone in the community is protected sooner.</p>
     <div class="two">
       <div class="yes">
         <h2>Sent when you share reports</h2>
         <ul>
-          <li>Address of a site SOCLens blocked or warned about, or that you reported, bypassed or trusted</li>
+          <li>Address of a site IOC Triage blocked or warned about, or that you reported, bypassed or trusted</li>
           <li>For a phishing email: sender, subject and the suspicious links</li>
-          <li>Your public IP address, browser type and SOCLens version</li>
+          <li>Your public IP address, browser type and IOC Triage version</li>
           <li>The nickname below, if you give one</li>
         </ul>
       </div>
@@ -68,7 +99,7 @@
         </ul>
       </div>
     </div>
-    <p class="muted" style="margin:12px 0 0">Reports are kept for up to 30 days and used only to improve phishing protection. You can change your choice any time from the SOCLens toolbar button.</p>
+    <p class="muted" style="margin:12px 0 0">Reports are kept for up to 30 days and used only to improve phishing protection. You can change your choice any time from the IOC Triage toolbar button.</p>
   </section>
 
   <section class="card" id="choiceCard" hidden>

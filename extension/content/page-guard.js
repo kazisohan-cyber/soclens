@@ -1,5 +1,5 @@
 /*
- * SOCLens page guard (every page, every frame, document_start).
+ * IOC Triage page guard (every page, every frame, document_start).
  *  1. Credential guard: stops the corporate password being typed into any non-corporate site.
  *     Typed values never leave the browser: the service worker compares a salted PBKDF2 hash.
  *  2. Page scanner (top frame): sends light-weight login-page signals to the service worker for a verdict.
@@ -14,10 +14,18 @@
   // ===================================================== credential guard ===
 
   let ctx = null;
-  UI.send({ type: 'credContext' }).then((c) => { ctx = c; });
+  // The service worker may still be starting, so retry. Checks made before this settles wait for it.
+  const ctxReady = (async () => {
+    for (let i = 0; i < 5 && !ctx; i++) {
+      if (i) await new Promise((r) => setTimeout(r, 300 * i));
+      const c = await UI.send({ type: 'credContext' });
+      if (c && !c.error) ctx = c;
+    }
+  })();
 
   let locked = false;               // set once a reuse is caught; all submits are then blocked
   const inflight = new Map();       // input -> Promise<boolean match>
+  const checked = new WeakMap();    // input -> last value sent for checking
   const BYPASS = Symbol('vs-bypass');
 
   const isCredInput = (t) => t instanceof HTMLInputElement && (t.type === 'password' || (t.type === 'text' && t.dataset.vsPw === '1'));
@@ -29,34 +37,72 @@
   }, true);
 
   document.addEventListener('input', (e) => {
-    const t = e.target;
-    if (!ctx || !ctx.enabled || ctx.trusted || !isCredInput(t)) return;
-    if (!ctx.lens.includes(t.value.length)) return;
+    if (isCredInput(e.target)) check(e.target);
+  }, true);
+
+  function check(t) {
     const value = t.value;
-    const p = UI.send({ type: 'credCheck', value }).then((r) => {
+    checked.set(t, value);
+    const skip = () => !ctx || !ctx.enabled || ctx.trusted || !ctx.lens.includes(value.length);
+    if (ctx && skip()) return;
+    const p = ctxReady.then(() => (skip() ? null : UI.send({ type: 'credCheck', value }))).then((r) => {
       const hit = !!(r && r.match);
-      if (hit && t.value === value) neutralise(t);
+      if (hit && t.value === value) neutralise(t, r);
       if (inflight.get(t) === p) inflight.delete(t);
       return hit;
     });
     inflight.set(t, p);
-  }, true);
+  }
 
-  function neutralise(input) {
+  // Autofill and page scripts can fill a field without an input event.
+  function checkFilled() {
+    document.querySelectorAll('input[type=password], input[data-vs-pw="1"]').forEach((i) => {
+      if (i.value && checked.get(i) !== i.value) check(i);
+    });
+  }
+
+  function neutralise(input, info) {
     locked = true;
     input.value = '';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.blur();
     document.querySelectorAll('input[type=password]').forEach((i) => { i.value = ''; });
+    const actions = [
+      { label: 'Leave this site', kind: 'primary', onClick: () => { location.replace('about:blank'); } },
+      { label: 'Stay (fields stay disabled)', onClick: (close) => close() }
+    ];
+    if (info.canTrust) actions.push({ label: 'This is my work site', kind: 'danger', onClick: (close) => { close(); confirmTrust(input); } });
     UI.modal({
       level: 'block',
       title: 'Stop — this is your work password',
-      text: `You just typed your organisation password on ${location.hostname}. This site is not part of your organisation, so SOCLens cleared the field before it was sent.`,
-      reasons: ['If you already pressed Sign in here before, change your password now', 'Your security team has been notified'],
+      text: `You just typed your organisation password on ${location.hostname}. This site is not on your organisation's list, so IOC Triage cleared the field before it was sent.`,
+      reasons: ['If you already pressed Sign in here before, change your password now',
+        info.notified ? 'Your security team has been notified' : 'This is recorded in the activity log on this device only'],
       meta: location.href.slice(0, 300),
+      actions
+    });
+  }
+
+  // A second step on purpose: a phishing page can look identical, and Enter lands on "Keep protection".
+  function confirmTrust(input) {
+    UI.modal({
+      level: 'warn',
+      title: `Allow your work password on ${location.hostname}?`,
+      text: 'Continue only if you opened this site yourself and you are sure of the address. A phishing site can look identical.',
+      reasons: ['IOC Triage will stop guarding your work password on this exact address, and keep checking it for phishing',
+        'Using a different password for this site is safer',
+        'You can undo this in Settings under Credential guard data'],
+      meta: location.hostname,
       actions: [
-        { label: 'Leave this site', kind: 'primary', onClick: () => { location.replace('about:blank'); } },
-        { label: 'Stay (fields stay disabled)', onClick: (close) => close() }
+        { label: 'Keep protection', kind: 'primary', onClick: (close) => close() },
+        { label: `Yes, allow ${location.hostname}`, onClick: async (close) => {
+          const r = await UI.send({ type: 'credTrust' });
+          close();
+          if (!r || !r.ok) return;
+          locked = false;
+          if (ctx) ctx.trusted = true;
+          input.focus();
+        } }
       ]
     });
   }
@@ -70,6 +116,7 @@
   function hold(e, replay) {
     if (e[BYPASS]) return;
     if (locked) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+    checkFilled();
     const p = pendingCheck();
     if (!p) return;
     e.preventDefault(); e.stopImmediatePropagation();

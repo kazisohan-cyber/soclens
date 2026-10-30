@@ -1,5 +1,5 @@
 /*
- * SOCLens hunt queries: turns indicators into a search the analyst can paste into their SIEM / EDR.
+ * IOC Triage hunt queries: turns indicators into a search the analyst can paste into their SIEM / EDR.
  * Pure functions. Values come from untrusted alert text, so every value is escaped for its query language.
  *
  * iocs = [{ type, group, value }] as produced by VSIoc / the investigate report.

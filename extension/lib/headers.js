@@ -1,5 +1,5 @@
 /*
- * SOCLens email header analyzer: paste raw headers, get SPF / DKIM / DMARC, the delivery path,
+ * IOC Triage email header analyzer: paste raw headers, get SPF / DKIM / DMARC, the delivery path,
  * sender mismatches (BEC patterns), the originating IP and a verdict. Runs fully on the device.
  * Uses VSAnalyzer (brands, registrable domains) and VSIoc when loaded.
  */

@@ -1,5 +1,5 @@
 /*
- * SOCLens recent activity: turns the raw event log into items a person understands.
+ * IOC Triage recent activity: turns the raw event log into items a person understands.
  * Merges a block with the bypass that followed it, collapses repeats, explains what happened and
  * why, and names the real domain behind look-alike hosts. Pure functions (popup + tests).
  */

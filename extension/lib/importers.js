@@ -1,5 +1,5 @@
 /*
- * SOCLens importers: turn EDR exports into client-memory notes, on the device.
+ * IOC Triage importers: turn EDR exports into client-memory notes, on the device.
  *
  * SentinelOne
  *   threats    Threats > Export (CSV): "Threat Details", "Analyst Verdict", "Hash", "Endpoints", "Site"...

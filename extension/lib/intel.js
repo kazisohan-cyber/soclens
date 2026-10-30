@@ -1,5 +1,5 @@
 /*
- * SOCLens threat-intel: parse URL / domain feeds and match URLs against them.
+ * IOC Triage threat-intel: parse URL / domain feeds and match URLs against them.
  * Pure functions (no chrome.*) so the service worker and the test page share them.
  * Feeds are configured by the admin (licensed sources); nothing is bundled.
  */

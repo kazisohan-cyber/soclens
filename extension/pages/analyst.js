@@ -1,7 +1,7 @@
-/* SOCLens analyst panel: investigate IOCs, ticket notes, email headers, client memory, settings. */
+/* IOC Triage analyst panel: investigate IOCs, ticket notes, email headers, client memory, settings. */
 (function () {
   'use strict';
-  const I = window.VSIoc, E = window.VSEngine, HD = window.VSHeaders, HUNT = window.VSHunt, TRI = window.VSTriage, AI = window.VSAi;
+  const I = window.VSIoc, E = window.VSEngine, HD = window.VSHeaders, HUNT = window.VSHunt, TRI = window.VSTriage, AI = window.VSAi, CASES = window.VSCases, EML = window.VSEml, MITRE = window.VSMitre, BL = window.VSBlocklist, TEAM = window.VSTeamFile;
   const $ = (id) => document.getElementById(id);
   const send = (msg) => chrome.runtime.sendMessage(msg);
   const MAX_IOCS = 25;
@@ -12,6 +12,9 @@
   let ctxNotes = [];      // remembered accounts / hostnames found in the pasted text
   let failedLookups = 0;
   let suggestion = null;  // triage suggestion for the current results
+  let currentCase = null; // decision-memory record of the current results
+  let histories = [];     // lines from decision memory for the ticket note
+  let techniques = [];    // possible ATT&CK techniques for the current results
 
   // Tiny DOM builder: every string becomes text, never HTML (lookup data is untrusted).
   function h(tag, attrs, ...kids) {
@@ -34,6 +37,7 @@
     document.querySelectorAll('[role=tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     document.querySelectorAll('section.tab').forEach((s) => { s.hidden = s.id !== 'tab-' + name; });
     if (name === 'memory') loadMemory();
+    if (name === 'shift') renderShift();
   }
   document.querySelectorAll('[role=tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
   document.addEventListener('click', (e) => { const g = e.target.closest('[data-goto]'); if (g) showTab(g.dataset.goto); });
@@ -90,8 +94,8 @@
     const allSet = core.every((p) => keys[p]);
     box.append(h('h3', { text: allSet ? 'All set ✓' : 'Unlock full reputation in 2 minutes (free)' }),
       h('p', { class: 'muted small', style: 'margin:0 0 6px', text: allSet
-        ? 'SOCLens now gives known-bad verdicts for IPs, domains, URLs and hashes. More sources (abuse.ch, urlscan) are in Settings.'
-        : 'SOCLens already works with 8 free sources. Two free keys add "known bad" verdicts. Keys stay in this browser.' }));
+        ? 'IOC Triage now gives known-bad verdicts for IPs, domains, URLs and hashes. More sources (abuse.ch, urlscan) are in Settings.'
+        : 'IOC Triage already works with 8 free sources. Two free keys add "known bad" verdicts. Keys stay in this browser.' }));
     core.forEach((p, i) => {
       const P = PROVIDERS[p];
       const step = h('div', { class: 'step' }, h('b', { text: `${i + 1}. ${P.name}` }), h('div', { class: 'unlocks', text: P.unlocks }));
@@ -274,8 +278,11 @@
     current = results.filter((r) => r && r.report);
     failedLookups = results.length - current.length;
     try { ctxNotes = (await send({ type: 'memoryContext', text: $('q').value })) || []; } catch (_) { ctxNotes = []; }
+    techniques = MITRE.map(current, { text: $('q').value });
+    histories = [];
     renderOverall();
     renderClientContext();
+    if (current.length) await recordCase(results, slots);
   }
 
   function sourceChip(key, s) {
@@ -356,6 +363,8 @@
     $('ovTime').textContent = new Date().toLocaleTimeString();
     $('copyState').textContent = '';
     renderTriage();
+    renderMitre();
+    renderBlock();
     aiSummarize();
     renderByo();
   }
@@ -387,11 +396,100 @@
     for (const m of ctxNotes) box.append(h('div', {}, h('span', { class: 'chip' + (m.expired ? ' warn' : ''), text: m.expired ? 'expired' : m.verdict }), ' ', m._desc));
   }
 
+  // ------------------------------------------------------- decision memory ---
+  async function loadCases() { return ((await chrome.storage.local.get('cases')).cases || []).map((c) => CASES.normalize(c)); }
+  async function saveCases(list) { await chrome.storage.local.set({ cases: list }); }
+
+  /** Stores this investigation, restores an earlier decision on a re-run, and shows what happened last time. */
+  async function recordCase(results, slots) {
+    const ov = E.overall(current.map((x) => ({ a: x.a })));
+    const item = CASES.fromInvestigation(current, { id: crypto.randomUUID(), now: Date.now(), client: settings.activeClient || '', ticket: $('ctx').value.trim(), analyst: settings.analyst || '',
+      overall: ov, suggested: suggestion ? suggestion.label : '' });
+    const before = await loadCases();
+    const { list, item: saved } = CASES.upsert(before, item);
+    currentCase = saved;
+    await saveCases(list);
+    $('decision').value = saved.decision || '';
+    results.forEach((r, i) => {
+      if (!r || !r.report) return;
+      const hist = CASES.history(list, r.report.value, settings.activeClient, saved.id);
+      if (!hist.total) return;
+      const line = CASES.describeHistory(hist);
+      histories.push(`${I.defang(r.report.value, r.report.type)}: ${line}`);
+      const hasNote = (r.report.memory || []).some((m) => !m.expired);
+      slots[i].querySelector('.actions').before(h('div', { class: 'hist' }, line, ' ', CASES.suggestsNote(hist, r.a.verdict) && !hasNote
+        ? h('button', { class: 'link', text: 'Save as a client note', onclick: () => prefillMemory(r.report.value, `Closed as benign ${hist.benign} times`) }) : null));
+    });
+  }
+  $('decision').addEventListener('change', async () => {
+    if (!currentCase) return;
+    currentCase.decision = $('decision').value;
+    await saveCases(CASES.setDecision(await loadCases(), currentCase.id, currentCase.decision));
+  });
+
+  // --------------------------------------------------------- shift handover ---
+  function shiftFrom() {
+    const v = $('shiftRange').value;
+    if (v === 'today') { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+    return Date.now() - Number(v) * 3600e3;
+  }
+  async function renderShift() {
+    const r = CASES.handover(await loadCases(), { from: shiftFrom(), client: settings && settings.activeClient, analyst: settings && settings.analyst });
+    $('shiftOut').textContent = r.text;
+    $('shiftCounts').textContent = r.counts.total ? `${r.counts.total} investigation${r.counts.total > 1 ? 's' : ''}, ${r.open.length} still need attention` : 'No investigations in this period.';
+  }
+  $('shiftRange').addEventListener('change', renderShift);
+  $('shiftCopy').addEventListener('click', (e) => copyText($('shiftOut').textContent, e.currentTarget));
+  $('shiftClear').addEventListener('click', async () => {
+    if (!confirm('Delete all investigations and decisions stored on this device?')) return;
+    await saveCases([]);
+    currentCase = null;
+    renderShift();
+  });
+
+  // --------------------------------------------------------------- MITRE ---
+  function renderMitre() {
+    const box = $('mitre');
+    box.textContent = '';
+    box.hidden = !techniques.length;
+    if (!techniques.length) return;
+    box.append(h('b', { text: 'Possible ATT&CK techniques (verify)' }), ...techniques.map((t) => h('div', { class: 'tech', title: t.why },
+      h('a', { href: t.url, target: '_blank', rel: 'noopener', text: t.id }), ` ${t.name} · ${t.tactic}`, h('span', { class: 'muted small', text: ` · ${t.why}` }))));
+  }
+
+  // ---------------------------------------------------------- block list ---
+  $('blockFormat').append(...BL.FORMATS.map((f) => h('option', { value: f.id, text: f.name })));
+  function blockText() {
+    const { entries, skipped } = BL.build(current, { includeSuspicious: $('blockSuspicious').checked });
+    const text = entries.length ? BL.render($('blockFormat').value, entries, { ticket: $('ctx').value.trim(), client: settings.activeClient || '' }) : '';
+    return { entries, skipped, text };
+  }
+  function renderBlock() {
+    const flagged = current.some((x) => ['malicious', 'critical', 'suspicious', 'high'].includes(x.a.verdict) && x.report.group !== 'cve');
+    $('blockBox').hidden = !flagged;
+    if (!flagged) return;
+    const { entries, skipped, text } = blockText();
+    $('blockOut').textContent = text;
+    $('blockState').textContent = !entries.length ? 'Nothing flagged at this level.' : !text.trim() ? 'No indicator fits this format.' : `${entries.length} flagged, ${skipped} left out. Review before deploying.`;
+  }
+  $('blockFormat').addEventListener('change', renderBlock);
+  $('blockSuspicious').addEventListener('change', renderBlock);
+  $('blockCopy').addEventListener('click', (e) => copyText(blockText().text, e.currentTarget));
+  $('blockSave').addEventListener('click', () => {
+    const f = BL.FORMATS.find((x) => x.id === $('blockFormat').value);
+    download(blockText().text, `ioc-triage-blocklist-${f.id}-${new Date().toISOString().slice(0, 10)}.${f.ext}`, f.mime);
+  });
+  function download(text, name, mime) {
+    const a = h('a', { href: URL.createObjectURL(new Blob([text], { type: mime })), download: name });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
   function noteOpts() {
     const worst = current.slice().sort((x, y) => (E.RANK[y.a.verdict] || 0) - (E.RANK[x.a.verdict] || 0))[0];
     return { context: $('ctx').value.trim(), analyst: settings && settings.analyst, summary: aiText ? aiText + ' (AI draft, verify)' : (worst ? worst.a.summary : ''),
       suggestion: suggestion ? `${suggestion.label} (${suggestion.detail}, confidence ${suggestion.confidence})` : '', decision: $('decision').value,
-      client: (settings && settings.activeClient) || '', clientContext: ctxNotes.map((m) => m._desc) };
+      client: (settings && settings.activeClient) || '', clientContext: ctxNotes.map((m) => m._desc).concat(histories.map((x) => 'History: ' + x)), mitre: techniques.map(MITRE.label) };
   }
   $('copyNote').addEventListener('click', (e) => {
     const n = E.ticketNote(current, noteOpts());
@@ -402,7 +500,7 @@
     const targets = current.filter((x) => x.a.verdict !== 'benign').map((x) => x.report);
     const q = tool ? HUNT.queries(targets).find((x) => x.id === tool) : null;
     const opts = noteOpts();
-    copyText(TRI.escalationNote(current, suggestion, { context: opts.context, analyst: opts.analyst, client: opts.client, clientContext: opts.clientContext, hunt: q }), e.currentTarget, null, 'Escalation note copied.');
+    copyText(TRI.escalationNote(current, suggestion, { context: opts.context, analyst: opts.analyst, client: opts.client, clientContext: opts.clientContext, mitre: opts.mitre, hunt: q }), e.currentTarget, null, 'Escalation note copied.');
   });
   $('copyMd').addEventListener('click', (e) => copyText(E.ticketNote(current, noteOpts()).markdown, e.currentTarget, null, 'Markdown copied.'));
   $('copyIocs').addEventListener('click', (e) => copyText(current.map((x) => `${I.defang(x.report.value, x.report.type)}\t${I.LABEL_OF[x.report.type]}\t${x.a.verdict}`).join('\n'),
@@ -478,11 +576,11 @@
   function lm() { return self.LanguageModel || (self.ai && self.ai.languageModel) || null; }
   async function aiAvailability() {
     const L = lm();
-    if (!L) return 'This browser has no built-in AI model. SOCLens uses its own reasoning instead.';
+    if (!L) return 'This browser has no built-in AI model. IOC Triage uses its own reasoning instead.';
     try {
       const a = L.availability ? await L.availability() : (await L.capabilities()).available;
       return a === 'available' || a === 'readily' ? 'Built-in AI model ready on this device.'
-        : a === 'unavailable' || a === 'no' ? 'This device cannot run the built-in model. SOCLens uses its own reasoning instead.'
+        : a === 'unavailable' || a === 'no' ? 'This device cannot run the built-in model. IOC Triage uses its own reasoning instead.'
           : 'Built-in model can be downloaded by the browser on first use.';
     } catch (_) { return 'Built-in AI not available.'; }
   }
@@ -519,6 +617,10 @@
     out.textContent = '';
     const r = HD.analyze($('hdr').value);
     if (!r.ok) { out.append(h('p', { class: 'muted', text: r.error })); return; }
+    out.append(headerCard(r));
+  });
+
+  function headerCard(r) {
     const s = r.summary;
     const st = (k, v) => h('span', { class: 'chip ' + (v === 'pass' ? 'ok' : /fail/.test(v) ? 'bad' : ''), text: `${k}: ${v || 'n/a'}` });
     const card = h('div', { class: 'card ioc' },
@@ -539,17 +641,51 @@
       h('button', { text: 'Copy findings', onclick: (e) => copyText([`Email header analysis: ${r.verdict.toUpperCase()}`, `Subject: ${s.subject}`, `From: ${s.from}`,
         `SPF ${r.auth.spf || 'n/a'} · DKIM ${r.auth.dkim || 'n/a'} · DMARC ${r.auth.dmarc || 'n/a'}`, r.origin ? 'Originating IP: ' + I.defang(r.origin) : '',
         ...r.reasons.filter((x) => x.kind !== 'info').map((x) => '- ' + x.t)].filter(Boolean).join('\n'), e.target) })));
-    out.append(card);
+    return card;
+  }
+
+  // ----------------------------------------------------------- .eml triage ---
+  $('emlFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    const out = $('hdrOut');
+    out.textContent = '';
+    if (!file) return;
+    if (file.size > 50 * 1024 * 1024) { out.append(h('p', { class: 'muted', text: 'File is larger than 50 MB.' })); return; }
+    out.append(h('p', { class: 'muted small' }, h('span', { class: 'spin' }), ' Reading the file on this device…'));
+    let r;
+    try { r = await EML.analyze(new Uint8Array(await file.arrayBuffer())); } catch (err) { r = { ok: false, error: 'Could not read this file: ' + err.message }; }
+    out.textContent = '';
+    if (!r.ok) { out.append(h('p', { class: 'muted', text: r.error })); return; }
+    out.append(emlCard(r), headerCard(r.head));
   });
+
+  function emlCard(r) {
+    const tech = MITRE.forEmail(r);
+    const card = h('div', { class: 'card ioc' }, h('div', { class: 'head' }, h('span', { class: 'val', text: r.subject || '(no subject)' }), pill(r.verdict)),
+      h('p', { class: 'muted small', style: 'margin:4px 0', text: 'Result of checks on this device. Investigate adds intel sources.' }));
+    if (r.reasons.length) card.append(h('ul', { class: 'why' }, r.reasons.slice(0, 8).map((x) => h('li', { class: x.kind, text: x.t }))));
+    if (r.attachments.length) card.append(h('details', { open: true }, h('summary', { text: `${r.attachments.length} attachment${r.attachments.length > 1 ? 's' : ''}` }), r.attachments.map((a) => h('div', { class: 'att' },
+      h('b', { text: a.name }), ` · ${a.type} · ${a.size.toLocaleString()} bytes`, h('div', { class: 'mono', text: a.sha256 }), a.flags.map((f) => h('span', { class: 'chip bad', text: f }))))));
+    if (r.urls.length) card.append(h('details', { open: r.urls.length <= 5 }, h('summary', { text: `${r.urls.length} link${r.urls.length > 1 ? 's' : ''}` }), r.urls.slice(0, 40).map((u) => h('div', { class: 'lnk' },
+      h('div', { class: 'mono', text: I.defang(u.real, 'url') }), u.mismatch ? h('span', { class: 'chip bad', text: `Shows ${u.text}` }) : null, u.level === 'block' || u.level === 'warn' ? h('span', { class: 'chip bad', text: u.level === 'block' ? 'Dangerous' : 'Suspicious' }) : null))));
+    if (tech.length) card.append(h('div', { class: 'ctx' }, h('b', { text: 'Possible ATT&CK techniques (verify)' }), tech.map((t) => h('div', { class: 'tech' }, h('a', { href: t.url, target: '_blank', rel: 'noopener', text: t.id }), ` ${t.name} · ${t.tactic}`))));
+    card.append(h('div', { class: 'actions' },
+      r.iocs.length ? h('button', { class: 'primary', text: `Investigate ${Math.min(r.iocs.length, MAX_IOCS)} indicator(s)`, onclick: () => { $('ctx').value = $('ctx').value || ('Email: ' + (r.subject || '')).slice(0, 200); run(r.iocs.slice(0, MAX_IOCS).join('\n')); } }) : null,
+      h('button', { text: 'Copy findings', onclick: (e) => copyText(EML.findings(r) + (tech.length ? `\n\nPossible ATT&CK: ${tech.map(MITRE.label).join('; ')}` : ''), e.target) }),
+      h('button', { text: 'Copy reply to user', onclick: (e) => copyText(EML.replyTemplate(r.verdict, { subject: r.subject, analyst: settings && settings.analyst }), e.target) })));
+    if (r.urls.length) card.append(h('p', { class: 'muted small', style: 'margin:6px 0 0', text: 'Investigate sends these links to intel services. Links can carry the recipient\'s address or a token, so check them first.' }));
+    return card;
+  }
 
   // ---------------------------------------------------------------- memory ---
   const MEM = window.VSMemory;
 
-  function prefillMemory(v) {
+  function prefillMemory(v, note) {
     editingId = null;
     $('mKind').value = 'auto';
     $('mIoc').value = v;
-    $('mNote').value = '';
+    $('mNote').value = note || '';
     $('mTicket').value = $('ctx').value.trim().slice(0, 80);
     $('mClient').value = (settings && settings.activeClient) || '';
     showTab('memory');
@@ -674,7 +810,7 @@
 
   $('mExport').addEventListener('click', async () => {
     const list = await send({ type: 'memoryList' });
-    const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' })), download: `soclens-client-memory-${new Date().toISOString().slice(0, 10)}.json` });
+    const a = h('a', { href: URL.createObjectURL(new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' })), download: `ioc-triage-client-memory-${new Date().toISOString().slice(0, 10)}.json` });
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
@@ -687,6 +823,48 @@
     $('mState').textContent = r.ok ? `Imported: ${r.added} new, ${r.updated} updated` : r.error;
     e.target.value = '';
     loadMemory();
+  });
+
+  // ------------------------------------------------------------ team memory ---
+  $('teamExport').addEventListener('click', async () => {
+    const state = $('teamState');
+    const btn = $('teamExport');
+    btn.disabled = true;
+    state.textContent = 'Encrypting…';
+    try {
+      const notes = await send({ type: 'memoryList' });
+      const cases = $('teamCases').checked ? await loadCases() : [];
+      const text = await TEAM.encrypt({ exportedAt: Date.now(), by: settings.analyst || '', notes, cases }, $('teamPass').value);
+      download(text, `ioc-triage-team-memory-${new Date().toISOString().slice(0, 10)}.ioctriage`, 'application/json');
+      state.textContent = `Exported ${notes.length} notes and ${cases.length} decisions.`;
+    } catch (err) { state.textContent = err.message; }
+    btn.disabled = false;
+  });
+  $('teamFile').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    const state = $('teamState'), box = $('teamReview');
+    box.textContent = '';
+    if (!file) return;
+    state.textContent = 'Decrypting…';
+    let d;
+    try { d = await TEAM.decrypt(await file.text(), $('teamPass').value); } catch (err) { state.textContent = err.message; return; }
+    const notes = Array.isArray(d.notes) ? d.notes : [];
+    const cases = Array.isArray(d.cases) ? d.cases : [];
+    const benign = notes.filter((n) => n && n.verdict === 'benign').length;
+    state.textContent = '';
+    const go = h('button', { class: 'primary', text: 'Merge into my memory', onclick: async () => {
+      go.disabled = true;
+      const r = await send({ type: 'memoryImport', items: notes });
+      const m = CASES.merge(await loadCases(), cases);
+      await saveCases(m.list);
+      box.textContent = '';
+      state.textContent = r && r.ok ? `Merged: ${r.added} new notes, ${r.updated} updated, ${m.added} new decisions.` : (r && r.error) || 'Import failed';
+      await loadClients();
+      loadMemory();
+    } });
+    box.append(h('div', { style: 'margin-top:8px' }, h('p', { class: 'small', style: 'margin:0 0 6px', text: `${notes.length} notes and ${cases.length} decisions${d.by ? ' from ' + String(d.by).slice(0, 60) : ''}${d.exportedAt ? ', exported ' + MEM.fmtDate(d.exportedAt) : ''}.` }),
+      benign ? h('p', { class: 'small', style: 'margin:0 0 6px;color:var(--warn)', text: `${benign} notes mark something as benign and can lower a verdict. Merge only files from your own team.` }) : null, go));
   });
 
   // ------------------------------------------------- queries from elsewhere ---

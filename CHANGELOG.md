@@ -1,6 +1,30 @@
 # Changelog
 
-All notable changes to SOCLens. Versions follow [Semantic Versioning](https://semver.org/).
+All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow [Semantic Versioning](https://semver.org/).
+
+## [0.8.0] - 2026-10-30
+
+### Changed
+- **Browsing protection now asks first.** The welcome page says what is read and what can leave the device, and phishing checks, the email scanner, the credential guard and highlighting stay off until you agree. You can withdraw in Settings. A browser policy from an admin counts as the organisation's decision. The analyst panel works either way. After updating, you will be asked once.
+- **The welcome page no longer says that nothing is sent to any server.** It now describes domain-age checks and intel lookups.
+- **New name: IOC Triage.** Another extension with a very similar name and purpose was already in the stores. Settings and data are unaffected.
+
+### Added
+- **Team memory:** export client notes and decision history as an AES-256-GCM encrypted file protected by a passphrase, and merge a colleague's file. No server is involved. You see what a file contains before merging it, and a wrong passphrase or a changed file will not open.
+- **MITRE ATT&CK mapping:** possible techniques from the evidence and the alert's wording appear in the panel, on ticket notes and on escalation notes. They are labelled as possible, and benign evidence maps to nothing.
+- **Block list export:** flagged indicators as plain lists for firewalls, DNS, web proxies and EDR, a Microsoft Defender indicators CSV, a general CSV or a STIX 2.1 bundle. Benign, internal and unflagged indicators and CVEs are left out, and suspicious ones only on request. You deploy the list yourself.
+
+## [0.7.0] - 2026-10-30
+
+### Added
+- **Decision memory:** SOCLens keeps a local record of each investigation and your decision. A result shows what happened last time, for example "Seen 4 times before: 3 closed as benign", and that history goes on the ticket note. After three benign closes it offers to save a client note. History never changes a verdict. Only indicators, verdicts, the ticket reference and the decision are stored, for 180 days.
+- **Phishing triage from `.eml` files:** open a reported email on the Email tab for header analysis, links with their real destinations, deceptive link text, attachment SHA-256 hashes and risky file types. Copy the findings or a reply to the person who reported it. The file is read on the device and the email is never displayed.
+- **Shift handover:** a new Shift tab builds a report from your investigations, with what still needs attention first. One click copies it.
+- **"This is my work site" on the password warning:** after a confirmation, the credential guard stands down on that exact address, for tools such as an EDR console that use the same password. Phishing checks keep running there. It is not offered on suspicious pages or when an admin disallows bypass. Review or remove these sites in Settings under Credential guard data.
+
+### Fixed
+- **The password warning no longer says your security team was notified when no console is connected.** It now says the event is recorded on this device only.
+- **The credential guard no longer misses a password entered while a page is still loading.** A paste, autofill or quick sign-in now waits for the check, and a field filled without an input event is checked when you submit.
 
 ## [0.6.0] - 2026-10-30
 

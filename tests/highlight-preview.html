@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>SOCLens highlight preview (fake SOC console)</title>
+<title>IOC Triage highlight preview (fake SOC console)</title>
 <style>
   body { font: 14px/1.5 system-ui, sans-serif; margin: 24px; max-width: 900px; }
   table { border-collapse: collapse; width: 100%; } td, th { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
@@ -21,7 +21,7 @@
   <table>
     <tr><th>Time</th><th>Indicator</th><th>Detail</th></tr>
     <tr><td>10:02:33</td><td>hxxps://micros0ft-login-demo[.]top/auth</td><td>clicked from Outlook</td></tr>
-    <tr><td>10:03:10</td><td>soclens-demo-phish.top</td><td>DNS query from 10.0.0.5</td></tr>
+    <tr><td>10:03:10</td><td>triage-demo-phish.top</td><td>DNS query from 10.0.0.5</td></tr>
     <tr><td>10:04:00</td><td>e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</td><td>invoice.pdf.exe dropped</td></tr>
     <tr><td>10:05:00</td><td>CVE-2024-3400</td><td>firewall version 10.2.9</td></tr>
   </table>
@@ -29,16 +29,17 @@
 </div>
 <script>
 (function () {
-  const local = { analyst: { highlight: true, highlightSites: ['localhost'] } };
+  const local = { analyst: { highlight: true, highlightSites: [location.hostname] } };
   const listeners = [];
   window.__msgs = [];
   window.chrome = {
     storage: { local: { get: async (k) => { const o = {}; for (const x of [].concat(k)) if (x in local) o[x] = local[x]; return o; } }, onChanged: { addListener: (f) => listeners.push(f) } },
     runtime: { sendMessage: async (msg) => {
       window.__msgs.push(msg.type);
+      if (msg.type === 'protectionState') return { agreed: true };
       if (msg.type === 'quickLook') return msg.values.map((v) => ({ value: v.value,
-        state: v.value === '203.0.113.77' ? 'benign' : v.value === 'soclens-demo-phish.top' ? 'malicious' : v.value === '10.0.0.5' ? 'internal' : '',
-        note: v.value === '203.0.113.77' ? 'Client A: Fortinet VPN egress' : v.value === 'soclens-demo-phish.top' ? 'In SOCLens phishing feed' : '' }));
+        state: v.value === '203.0.113.77' ? 'benign' : v.value === 'triage-demo-phish.top' ? 'malicious' : v.value === '10.0.0.5' ? 'internal' : '',
+        note: v.value === '203.0.113.77' ? 'Client A: Fortinet VPN egress' : v.value === 'triage-demo-phish.top' ? 'In IOC Triage phishing feed' : '' }));
       if (msg.type === 'investigate') return { a: { verdict: 'suspicious', confidence: 'medium', summary: 'Demo verdict for ' + msg.value, reasons: [{ t: 'Demo reason', kind: 'bad' }] } };
       return null;
     } }

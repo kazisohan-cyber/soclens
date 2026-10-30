@@ -43,7 +43,7 @@
     e.currentTarget.textContent = r && r.sentToSoc ? 'Reported ✓' : 'Logged on this device ✓';
   });
   $('trust').addEventListener('click', async (e) => {
-    if (!confirm(`Always trust ${v.host}? SOCLens will stop checking it.`)) return;
+    if (!confirm(`Always trust ${v.host}? IOC Triage will stop checking it.`)) return;
     const r = await chrome.runtime.sendMessage({ type: 'trustSite', url: s.url });
     if (r && r.ok) { e.currentTarget.textContent = 'Trusted ✓'; e.currentTarget.disabled = true; }
   });
@@ -90,18 +90,21 @@ function protectionRows(s, vstate, analyst) {
   const rows = [];
   const H = 3600e3;
   const connected = s.mode === 'managed' || s.mode === 'community';
-  rows.push(s.pageScanner === false
+  if (s.agreed === false) rows.push({ label: 'Browsing protection', value: 'Off', state: 'warn', issue: 'Browsing protection is off until you agree', hint: 'The analyst panel still works.',
+    action: ['Review', () => chrome.tabs.create({ url: chrome.runtime.getURL('pages/welcome.html') })] });
+  else rows.push(s.pageScanner === false
     ? { label: 'Phishing site blocking', value: 'Off', state: 'warn', hint: 'Turned off in Settings: fake login pages will not be blocked.', action: ['Settings', () => chrome.runtime.openOptionsPage()] }
     : { label: 'Phishing site blocking', value: 'On', state: 'ok' });
-  rows.push(s.webmailScanner === false
+  if (s.agreed !== false) rows.push(s.webmailScanner === false
     ? { label: 'Email scanner', value: 'Off', state: 'off', hint: 'Gmail / Outlook web emails are not checked.' }
     : { label: 'Email scanner', value: 'On', state: 'ok', hint: 'Gmail and Outlook on the web' });
-  if (!s.credentialGuard) rows.push({ label: 'Credential guard', value: 'Off', state: 'off' });
+  if (s.agreed === false) { /* covered by the row above */ }
+  else if (!s.credentialGuard) rows.push({ label: 'Credential guard', value: 'Off', state: 'off' });
   else if (s.enrolled) rows.push({ label: 'Credential guard', value: 'Active', state: 'ok', hint: s.credLearned ? `Protecting the password you use at ${s.credLearned.host}` : '' });
   else {
     const where = s.loginDomain || 'login.microsoftonline.com';
     rows.push({ label: 'Credential guard', value: 'Not active yet', state: 'warn', issue: 'Credential guard is not active yet',
-      hint: `Sign in once at ${where} so SOCLens can stop your work password being typed on fake sites.`,
+      hint: `Sign in once at ${where} so IOC Triage can stop your work password being typed on fake sites.`,
       action: ['Activate', () => chrome.tabs.create({ url: 'https://' + where + '/' })] });
   }
   if (s.blocklistSize) {
@@ -110,11 +113,11 @@ function protectionRows(s, vstate, analyst) {
       hint: stale ? `Last updated ${ago(s.blocklistAt)}: check the connection to your SOC console.` : `Updated ${ago(s.blocklistAt)}` });
   } else {
     rows.push({ label: 'Threat feed', value: connected ? 'Waiting' : 'Built-in only', state: connected ? 'warn' : 'off',
-      hint: connected ? 'No feed received yet from your console.' : 'Look-alike and fake-login detection run on this device. A SOCLens console adds a live phishing feed.' });
+      hint: connected ? 'No feed received yet from your console.' : 'Look-alike and fake-login detection run on this device. An IOC Triage console adds a live phishing feed.' });
   }
   if (s.revoked) rows.push({ label: 'Connection', value: 'Disconnected', state: 'bad', issue: 'This browser was disconnected by an admin', hint: 'Your admin revoked this browser. Protection on the device still works.' });
   else if (s.mode === 'managed') rows.push({ label: 'Connection', value: 'Your SOC', state: 'ok', hint: s.reporting === 'off' ? 'Reports are not shared' : 'Blocks and reports go to your security team' });
-  else if (s.mode === 'community') rows.push({ label: 'Connection', value: 'Community', state: 'ok', hint: s.reporting === 'off' ? 'Protection only, reports not shared' : 'Sharing anonymous reports with the SOCLens community' });
+  else if (s.mode === 'community') rows.push({ label: 'Connection', value: 'Community', state: 'ok', hint: s.reporting === 'off' ? 'Protection only, reports not shared' : 'Sharing anonymous reports with the IOC Triage community' });
   else rows.push({ label: 'Connection', value: 'This device only', state: 'off', hint: 'Everything runs locally. Nothing is sent anywhere.' });
   if (vstate && vstate.enabled) rows.push({ label: 'Sign-in verification', value: vstate.lastHeartbeat ? 'On' : 'Starting…', state: vstate.lastHeartbeat ? 'ok' : 'warn',
     hint: vstate.lastHeartbeat ? `Your SOC can ask "was this you?" here · checked ${ago(vstate.lastHeartbeat)}` : 'Waiting for the first check-in with your SOC' });
@@ -198,7 +201,7 @@ function renderActivity(s) {
     if (it.canTrust && s.allowBypass) {
       const b = el('button', '', 'Not phishing? Trust this site');
       b.addEventListener('click', async () => {
-        if (!confirm(`Always trust ${it.host}? SOCLens will stop checking it${shared ? ' and your SOC will see this decision' : ''}.`)) return;
+        if (!confirm(`Always trust ${it.host}? IOC Triage will stop checking it${shared ? ' and your SOC will see this decision' : ''}.`)) return;
         const r = await chrome.runtime.sendMessage({ type: 'trustSite', url: it.url });
         b.textContent = r && r.ok ? 'Trusted ✓' : 'Not allowed by your organisation';
         b.disabled = true;

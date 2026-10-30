@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SOCLens: Free SOC Analyst Extension for IOC Investigation</title>
-<meta name="description" content="SOCLens is a free, open-source Chrome and Edge extension for SOC analysts: right-click any IP, domain, URL, file hash or CVE for an explainable verdict from 15 threat-intel sources, one-click ticket notes, email header analysis, client memory and phishing protection. Runs locally, no account.">
+<title>IOC Triage: Free SOC Analyst Extension for IOC Investigation</title>
+<meta name="description" content="IOC Triage is a free, open-source Chrome and Edge extension for SOC analysts: right-click any IP, domain, URL, file hash or CVE for an explainable verdict from 15 threat-intel sources, one-click ticket notes, email header analysis, client memory and phishing protection. Runs locally, no account.">
 <meta name="keywords" content="SOC analyst tool, IOC enrichment, threat intelligence browser extension, VirusTotal AbuseIPDB extension, phishing protection, email header analyzer, MSSP, SentinelOne, Securonix, HaloPSA, incident response">
 <meta name="author" content="OpsVantage">
 <meta name="robots" content="index, follow">
@@ -13,16 +13,16 @@
 <link rel="icon" type="image/png" href="icon.png">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="SOCLens">
-<meta property="og:title" content="SOCLens: SOC analyst assistant & phishing protection">
+<meta property="og:site_name" content="IOC Triage">
+<meta property="og:title" content="IOC Triage: SOC analyst assistant & phishing protection">
 <meta property="og:description" content="Right-click any IP, domain, URL, hash or CVE for an explainable verdict from 15 intel sources. Ticket notes, email headers, client memory. Free, open source, runs locally.">
 <meta property="og:url" content="https://kazisohan-cyber.github.io/soclens/">
 <meta property="og:image" content="https://kazisohan-cyber.github.io/soclens/og-image.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
-<meta property="og:image:alt" content="SOCLens analyst panel investigating a Securonix alert">
+<meta property="og:image:alt" content="IOC Triage analyst panel investigating a Securonix alert">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="SOCLens: SOC analyst assistant & phishing protection">
+<meta name="twitter:title" content="IOC Triage: SOC analyst assistant & phishing protection">
 <meta name="twitter:description" content="Explainable IOC verdicts from 15 intel sources, ticket notes, email header analysis and phishing protection. Free and open source.">
 <meta name="twitter:image" content="https://kazisohan-cyber.github.io/soclens/og-image.png">
 
@@ -30,7 +30,7 @@
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "SOCLens",
+  "name": "IOC Triage",
   "applicationCategory": "SecurityApplication",
   "applicationSubCategory": "Browser extension",
   "operatingSystem": "Chrome, Microsoft Edge (Manifest V3)",
@@ -53,11 +53,11 @@
   "@context": "https://schema.org",
   "@type": "FAQPage",
   "mainEntity": [
-    { "@type": "Question", "name": "Is SOCLens free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. SOCLens is free and open source under the Apache 2.0 licence. Some intel sources need a free API key from the provider (VirusTotal, AbuseIPDB, abuse.ch, urlscan.io); eight sources work with no key at all." } },
-    { "@type": "Question", "name": "Does SOCLens send my data to a server?", "acceptedAnswer": { "@type": "Answer", "text": "No. There is no SOCLens server by default. Everything runs in your browser, and when you investigate an indicator only that indicator is sent, directly to each intel service. Email content, passwords and browsing history never leave the device." } },
-    { "@type": "Question", "name": "Which intel sources does SOCLens use?", "acceptedAnswer": { "@type": "Answer", "text": "Without a key: GreyNoise, Shodan InternetDB, ipinfo, RDAP domain age, DNS, CISA KEV, FIRST EPSS and NVD, plus local lookalike-domain analysis. With a free key: VirusTotal, AbuseIPDB, abuse.ch (URLhaus, ThreatFox, MalwareBazaar) and urlscan.io." } },
-    { "@type": "Question", "name": "Does SOCLens work with Securonix, SentinelOne or HaloPSA?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can investigate any text selected in those consoles, indicators on them are highlighted, ticket notes paste into HaloPSA with formatting, and SentinelOne Threats, Endpoints and Data Lake CSV exports can be imported into client memory." } },
-    { "@type": "Question", "name": "How does the AI work?", "acceptedAnswer": { "@type": "Answer", "text": "AI is optional and verdicts never depend on it. SOCLens can use the browser's built-in on-device model (Gemini Nano in Chrome), which keeps everything on your machine. You can also connect your own AI: OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, a local model through Ollama or LM Studio, or any OpenAI-compatible endpoint. Your own AI runs only when you click, shows exactly what is sent, never receives your pasted alert, and masks client data by default." } },
+    { "@type": "Question", "name": "Is IOC Triage free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. IOC Triage is free and open source under the Apache 2.0 licence. Some intel sources need a free API key from the provider (VirusTotal, AbuseIPDB, abuse.ch, urlscan.io); eight sources work with no key at all." } },
+    { "@type": "Question", "name": "Does IOC Triage send my data to a server?", "acceptedAnswer": { "@type": "Answer", "text": "No. There is no IOC Triage server by default. Everything runs in your browser, and when you investigate an indicator only that indicator is sent, directly to each intel service. Email content, passwords and browsing history never leave the device." } },
+    { "@type": "Question", "name": "Which intel sources does IOC Triage use?", "acceptedAnswer": { "@type": "Answer", "text": "Without a key: GreyNoise, Shodan InternetDB, ipinfo, RDAP domain age, DNS, CISA KEV, FIRST EPSS and NVD, plus local lookalike-domain analysis. With a free key: VirusTotal, AbuseIPDB, abuse.ch (URLhaus, ThreatFox, MalwareBazaar) and urlscan.io." } },
+    { "@type": "Question", "name": "Does IOC Triage work with Securonix, SentinelOne or HaloPSA?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. You can investigate any text selected in those consoles, indicators on them are highlighted, ticket notes paste into HaloPSA with formatting, and SentinelOne Threats, Endpoints and Data Lake CSV exports can be imported into client memory." } },
+    { "@type": "Question", "name": "How does the AI work?", "acceptedAnswer": { "@type": "Answer", "text": "AI is optional and verdicts never depend on it. IOC Triage can use the browser's built-in on-device model (Gemini Nano in Chrome), which keeps everything on your machine. You can also connect your own AI: OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, a local model through Ollama or LM Studio, or any OpenAI-compatible endpoint. Your own AI runs only when you click, shows exactly what is sent, never receives your pasted alert, and masks client data by default." } },
     { "@type": "Question", "name": "Which browsers are supported?", "acceptedAnswer": { "@type": "Answer", "text": "Google Chrome and Microsoft Edge (Manifest V3), version 116 or later." } }
   ]
 }
@@ -114,7 +114,7 @@
 <body>
 <div class="wrap">
   <header class="top">
-    <a class="brand" href="./"><img src="icon.png" alt="" width="30" height="30">SOCLens</a>
+    <a class="brand" href="./"><img src="icon.png" alt="" width="30" height="30">IOC Triage</a>
     <nav aria-label="Main">
       <a href="#features">Features</a><a href="#sources">Intel sources</a><a href="#install">Install</a><a href="#faq">FAQ</a>
       <a class="gh" href="https://github.com/kazisohan-cyber/soclens">GitHub</a>
@@ -125,14 +125,14 @@
     <div class="hero">
       <div>
         <h1>Investigate any IOC in <span>one right-click</span>.</h1>
-        <p class="lead">SOCLens is a free browser extension for SOC analysts. Select an IP, domain, URL, file hash or CVE on any page, in Securonix, SentinelOne, HaloPSA or a raw log, and get an explainable verdict from 15 threat-intel sources, with what to do next and a ready ticket note.</p>
+        <p class="lead">IOC Triage is a free browser extension for SOC analysts. Select an IP, domain, URL, file hash or CVE on any page, in Securonix, SentinelOne, HaloPSA or a raw log, and get an explainable verdict from 15 threat-intel sources, with what to do next and a ready ticket note.</p>
         <div class="cta">
           <a class="btn primary" href="https://github.com/kazisohan-cyber/soclens/releases/latest">Download free</a>
           <a class="btn" href="https://github.com/kazisohan-cyber/soclens">View source on GitHub</a>
         </div>
         <div class="badges"><span>Free &amp; open source (Apache-2.0)</span><span>Runs locally, no account</span><span>Chrome &amp; Edge</span></div>
       </div>
-      <img class="shot" src="screenshots/01-investigate.jpg" width="701" height="1645" alt="SOCLens analyst panel: a pasted Securonix alert with six indicators, an overall malicious verdict and client context from memory" style="max-height:620px;object-fit:cover;object-position:top">
+      <img class="shot" src="screenshots/01-investigate.jpg" width="701" height="2044" alt="IOC Triage analyst panel: a pasted Securonix alert with six indicators, an overall malicious verdict and client context from memory" style="max-height:620px;object-fit:cover;object-position:top">
     </div>
 
     <section id="features">
@@ -148,6 +148,12 @@
         <div class="card"><h3>IOC highlighting</h3><p>Indicators on SOC consoles are underlined by client memory and past verdicts. Click one for a verdict. The console's page is never modified.</p></div>
         <div class="card"><h3>Hunt queries</h3><p>One click copies a ready query for SentinelOne, Defender, Sentinel, Splunk or Securonix, for one indicator or the whole alert.</p></div>
         <div class="card"><h3>Close or escalate</h3><p>A suggested decision with its reasons, and a ready hand-over note for L2. It never suggests closing when evidence is missing.</p></div>
+        <div class="card"><h3>Decision memory</h3><p>See what you decided last time for the same indicator and client, on the device, and turn repeat false positives into client notes.</p></div>
+        <div class="card"><h3>Phishing triage</h3><p>Open a reported .eml file for headers, real link destinations and attachment hashes, then copy a reply for the person who reported it. The email is never displayed.</p></div>
+        <div class="card"><h3>Shift handover</h3><p>A report built from your investigations and decisions, with what needs attention first.</p></div>
+        <div class="card"><h3>Team memory</h3><p>Share notes and decisions as an encrypted file with a passphrase. No server involved.</p></div>
+        <div class="card"><h3>MITRE ATT&amp;CK mapping</h3><p>Possible techniques from the evidence, labelled as possible, on your ticket and escalation notes.</p></div>
+        <div class="card"><h3>Block list export</h3><p>Flagged indicators for firewalls and EDR, a Microsoft Defender CSV or STIX 2.1. You review and deploy it.</p></div>
         <div class="card"><h3>Your own AI (optional)</h3><p>Connect OpenAI, Claude, Gemini, Azure OpenAI or a local model for summaries and client emails. Sends only on click, with client data masked.</p></div>
         <div class="card"><h3>Safe detonation</h3><p>See a screenshot of a suspicious link through urlscan.io without opening it in your browser.</p></div>
         <div class="card"><h3>Phishing protection</h3><p>Blocks fake login pages and lookalike domains, flags phishing emails in Gmail and Outlook on the web, and stops your work password being typed on other sites.</p></div>
@@ -158,15 +164,15 @@
       <h2>See it in action</h2>
       <p class="sub">Screenshots use sample data (documentation IP ranges, demo domains, the EICAR test file, public CVE data).</p>
       <div class="gallery">
-        <figure><img src="screenshots/02-verdicts.jpg" width="701" height="2002" loading="lazy" alt="Verdict cards for a phishing URL, a file hash and CVE-2024-3400 with reasons and sources" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Verdicts with reasons and sources</figcaption></figure>
-        <figure><img src="screenshots/03-email-headers.jpg" width="701" height="1475" loading="lazy" alt="Email header analysis showing SPF fail, DMARC fail and a Reply-To BEC warning" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Email header analysis</figcaption></figure>
-        <figure><img src="screenshots/04-client-memory.jpg" width="701" height="1432" loading="lazy" alt="Client memory notes for a client: VPN range, service account, hostname and ASN" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Client memory with owner and expiry</figcaption></figure>
+        <figure><img src="screenshots/02-verdicts.jpg" width="701" height="2509" loading="lazy" alt="Verdict cards for a phishing URL, a file hash and CVE-2024-3400 with reasons and sources" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Verdicts with reasons and sources</figcaption></figure>
+        <figure><img src="screenshots/03-email-headers.jpg" width="701" height="1878" loading="lazy" alt="A reported email triaged on the device: a double-extension attachment, a deceptive link, possible ATT&amp;CK techniques and failed SPF and DMARC" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Email header analysis</figcaption></figure>
+        <figure><img src="screenshots/04-client-memory.jpg" width="701" height="2098" loading="lazy" alt="Client memory notes for a client: VPN range, service account, hostname and ASN" style="aspect-ratio:3/4;object-fit:cover;object-position:top"><figcaption>Client memory with owner and expiry</figcaption></figure>
       </div>
     </section>
 
     <section id="sources">
       <h2>15 intel sources, your keys, your browser</h2>
-      <p class="sub">Only the indicator is sent, directly from your browser to each service. There's no SOCLens server in between.</p>
+      <p class="sub">Only the indicator is sent, directly from your browser to each service. There's no IOC Triage server in between.</p>
       <table>
         <thead><tr><th>Needs no key</th><th>Free API key</th></tr></thead>
         <tbody><tr>
@@ -179,25 +185,25 @@
     <section id="install">
       <h2>Install in one minute</h2>
       <ol class="steps">
-        <li>Download <code>soclens-extension-v*.zip</code> from the <a href="https://github.com/kazisohan-cyber/soclens/releases/latest">latest release</a> and unzip it.</li>
+        <li>Download <code>ioc-triage-extension-v*.zip</code> from the <a href="https://github.com/kazisohan-cyber/soclens/releases/latest">latest release</a> and unzip it.</li>
         <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code>), turn on <b>Developer mode</b>, click <b>Load unpacked</b> and pick the unzipped folder.</li>
-        <li>Select any indicator on a page, right-click, then <b>SOCLens: Investigate</b>. Optional: add free VirusTotal and AbuseIPDB keys in the panel's 2-minute setup.</li>
+        <li>Select any indicator on a page, right-click, then <b>IOC Triage: Investigate</b>. Optional: add free VirusTotal and AbuseIPDB keys in the panel's 2-minute setup.</li>
       </ol>
     </section>
 
     <section id="faq">
       <h2>FAQ</h2>
-      <details><summary>Is SOCLens free?</summary><p>Yes, free and open source under Apache 2.0. Eight intel sources work with no key; VirusTotal, AbuseIPDB, abuse.ch and urlscan.io need a free key from each provider.</p></details>
-      <details><summary>Does it send my data anywhere?</summary><p>No SOCLens server is involved. Everything runs in your browser. When you investigate, only the indicator goes to each intel service. Email content, passwords and browsing history never leave the device. If you connect your own AI, it receives computed evidence only when you click. See the <a href="https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md">privacy policy</a>.</p></details>
+      <details><summary>Is IOC Triage free?</summary><p>Yes, free and open source under Apache 2.0. Eight intel sources work with no key; VirusTotal, AbuseIPDB, abuse.ch and urlscan.io need a free key from each provider.</p></details>
+      <details><summary>Does it send my data anywhere?</summary><p>No IOC Triage server is involved. Everything runs in your browser. When you investigate, only the indicator goes to each intel service. Email content, passwords and browsing history never leave the device. If you connect your own AI, it receives computed evidence only when you click. See the <a href="https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md">privacy policy</a>.</p></details>
       <details><summary>Does it work with Securonix, SentinelOne or HaloPSA?</summary><p>Yes. Investigate any text you select in those consoles, highlight the indicators on them, paste ticket notes into HaloPSA with formatting kept, and import SentinelOne CSV exports into client memory.</p></details>
       <details><summary>Can my company deploy it centrally?</summary><p>Yes. Settings can be pushed through Chrome or Edge policy (GPO / Intune). An optional self-hosted console adds SOC reporting, threat feeds and sign-in verification.</p></details>
-      <details><summary>How does the AI work?</summary><p>AI is optional and verdicts never depend on it. SOCLens can use the browser's built-in on-device model (Gemini Nano in Chrome), which keeps everything on your machine. You can also connect your own AI: OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, a local model through Ollama or LM Studio, or any OpenAI-compatible endpoint. It runs only when you click, shows exactly what is sent, never receives your pasted alert, and masks client data by default.</p></details>
+      <details><summary>How does the AI work?</summary><p>AI is optional and verdicts never depend on it. IOC Triage can use the browser's built-in on-device model (Gemini Nano in Chrome), which keeps everything on your machine. You can also connect your own AI: OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, a local model through Ollama or LM Studio, or any OpenAI-compatible endpoint. It runs only when you click, shows exactly what is sent, never receives your pasted alert, and masks client data by default.</p></details>
       <details><summary>Which browsers are supported?</summary><p>Google Chrome and Microsoft Edge, version 116 or later.</p></details>
     </section>
   </main>
 
   <footer>
-    SOCLens by OpsVantage · <a href="https://github.com/kazisohan-cyber/soclens">Source</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md">Privacy</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/CHANGELOG.md">Changelog</a>
+    IOC Triage (formerly SOCLens) by OpsVantage · <a href="https://github.com/kazisohan-cyber/soclens">Source</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md">Privacy</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/kazisohan-cyber/soclens/blob/main/CHANGELOG.md">Changelog</a>
   </footer>
 </div>
 </body>

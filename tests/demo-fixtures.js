@@ -49,7 +49,28 @@
     { id: 'demo-4', kind: 'asn', ioc: 'AS62044', client: 'Client A', verdict: 'benign', note: 'Zscaler internet access', by: 'L1 Analyst', ticket: 'INC-3901' }
   ];
 
+  const H = 3600e3;
+  const CASES = [
+    { id: 'demo-c1', ago: 90 * 60e3, ticket: 'INC-4702', overall: 'benign', decision: 'False positive: closed', iocs: [{ type: 'ipv4', value: '203.0.113.77', verdict: 'benign' }] },
+    { id: 'demo-c2', ago: 3 * H, ticket: 'INC-4698', overall: 'malicious', decision: 'True positive: escalated', iocs: [{ type: 'url', value: 'https://paypa1-verify.example/login', verdict: 'malicious' }, { type: 'ipv4', value: '198.51.100.9', verdict: 'suspicious' }] },
+    { id: 'demo-c3', ago: 5 * H, ticket: 'INC-4690', overall: 'unknown', decision: 'Needs more information', iocs: [{ type: 'domain', value: 'cdn-assets.example', verdict: 'unknown' }] },
+    { id: 'demo-c4', ago: 30 * H, ticket: 'INC-4611', overall: 'benign', decision: 'False positive: closed', iocs: [{ type: 'ipv4', value: '203.0.113.77', verdict: 'benign' }] },
+    { id: 'demo-c5', ago: 54 * H, ticket: 'INC-4580', overall: 'benign', decision: 'Benign true positive: closed', iocs: [{ type: 'ipv4', value: '203.0.113.77', verdict: 'benign' }] }
+  ];
+  // A sample phishing email: documentation addresses, .example domains, a harmless fake attachment.
+  const EML = [
+    'Received: from mail.micros0ft-login.example (mail.micros0ft-login.example [198.51.100.40]) by mx.client-a.example with ESMTP id abc123; Thu, 29 Oct 2026 08:12:03 +0000',
+    'Received: from [203.0.113.200] (unknown [203.0.113.200]) by mail.micros0ft-login.example with ESMTPA id def456; Thu, 29 Oct 2026 08:11:51 +0000',
+    'Authentication-Results: mx.client-a.example; spf=fail smtp.mailfrom=micros0ft-login.example; dkim=none; dmarc=fail header.from=microsoft.example',
+    'From: "Microsoft 365 Security" <security@microsoft.example>', 'Reply-To: helpdesk-verify@micros0ft-login.example', 'Return-Path: <bounce@micros0ft-login.example>',
+    'To: user@client-a.example', 'Subject: Action required: password expires today', 'Date: Thu, 29 Oct 2026 08:11:48 +0000', 'Message-ID: <20261029081148.1234@micros0ft-login.example>',
+    'X-Mailer: PHPMailer 6.9.1', 'MIME-Version: 1.0', 'Content-Type: multipart/mixed; boundary="demo"', '', '--demo', 'Content-Type: text/html; charset=utf-8', '',
+    '<p>Your password expires today. <a href="https://micros0ft-login.example/auth?u=bob">https://portal.office.example/</a></p>', '--demo',
+    'Content-Type: application/octet-stream; name="invoice.pdf.exe"', 'Content-Disposition: attachment; filename="invoice.pdf.exe"', 'Content-Transfer-Encoding: base64', '', btoa('MZ sample only, not a program'), '--demo--', ''
+  ].join('\r\n');
+
   window.SOCLENS_DEMO = {
+    eml: EML,
     text: 'Securonix INC-4711: svc-backup on BKP-SRV01 signed in from 203.0.113.77, then 198.51.100.23. ' +
       'User clicked hxxps://micros0ft-login[.]example/auth?u=bob and dropped 275a021bbfb6489e54d471899f7db9d1663fc695ec2fe2a2c4538aabf651fd0f. ' +
       'Firewall alert CVE-2024-3400. DNS 8.8.8.8',
@@ -57,6 +78,7 @@
       const now = Date.now();
       await chrome.storage.local.set({
         memory: MEMORY.map((m, i) => Object.assign({ created: now - (i + 3) * 864e5, updated: now - (i + 1) * 864e5, expires: now + (80 - i * 10) * 864e5 }, m)),
+        cases: CASES.map(({ ago, ...c }) => Object.assign(c, { at: now - ago, updated: now - ago, client: 'Client A', analyst: 'L1 Analyst' })),
         analyst: { keys: { vt: 'demo', abuseipdb: 'demo' }, wizardDone: true, activeClient: 'Client A', analyst: 'L1 Analyst', publicSources: true, highlight: true, ai: false }
       });
     },

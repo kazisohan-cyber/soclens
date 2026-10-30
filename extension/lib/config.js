@@ -1,5 +1,5 @@
 /*
- * SOCLens config: defaults <- user settings (storage.local) <- console policy (GET /v1/config)
+ * IOC Triage config: defaults <- user settings (storage.local) <- console policy (GET /v1/config)
  * <- admin policy (storage.managed). Admin policy always wins; keys set by policy are reported in
  * `_managed` (and console-pushed keys in `_remote`) so the UI can lock them.
  *
@@ -20,7 +20,7 @@
     // SOC / backend
     apiEndpoint: '',            // e.g. https://shield.example.com  (POST /v1/events, GET /v1/blocklist)
     apiKey: '',
-    communityEndpoint: COMMUNITY_ENDPOINT, // optional self-enrolling community console, e.g. https://soclens.example.org
+    communityEndpoint: COMMUNITY_ENDPOINT, // optional self-enrolling community console, e.g. https://ioc-triage.example.org
     tenantId: '',
     userId: '',                 // optional: pushed per user via policy so SOC can map alerts
     // Domains
@@ -37,7 +37,7 @@
     pageScanner: true,
     domainAgeLookup: true,
     allowUserBypass: true,
-    verifyEnabled: false        // SOCLens Verify: record IdP sign-ins + heartbeat (business tenants only)
+    verifyEnabled: false        // IOC Triage Verify: record IdP sign-ins + heartbeat (business tenants only)
   };
 
   const LIST_KEYS = ['corporateDomains', 'corporateLoginDomains', 'allowedDomains', 'blockedDomains'];

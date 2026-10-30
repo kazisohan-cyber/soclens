@@ -1,5 +1,5 @@
 /*
- * SOCLens IOC highlighter (analyst sites only: Securonix, HaloPSA, EDR consoles... see Settings).
+ * IOC Triage IOC highlighter (analyst sites only: Securonix, HaloPSA, EDR consoles... see Settings).
  * Colours IPs, domains, URLs, hashes and CVEs using the CSS Custom Highlight API, so the page's own
  * DOM is never modified (safe on React/Angular SOC consoles). Colour comes from client memory, the
  * phishing feed and earlier verdicts; no external lookup runs until the analyst clicks an indicator.
@@ -25,7 +25,8 @@
     const { analyst } = await chrome.storage.local.get('analyst');
     const sites = (analyst && analyst.highlightSites) || ['securonix.net', 'securonix.com', 'halopsa.com', 'haloitsm.com', 'haloservicedesk.com',
       'sentinelone.net', 'security.microsoft.com', 'portal.azure.com', 'app.slack.com', 'teams.microsoft.com'];
-    const on = !(analyst && analyst.highlight === false) && onList(host, sites);
+    let on = !(analyst && analyst.highlight === false) && onList(host, sites);
+    if (on) { const p = await chrome.runtime.sendMessage({ type: 'protectionState' }).catch(() => null); on = !!(p && p.agreed); }
     if (on === enabled) return;
     enabled = on;
     if (enabled) start(); else stop();
@@ -137,7 +138,7 @@
     const st = stateOf.get(hit.value) || {};
     const el = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
     b.append(el('div', 'v', I.defang(hit.value, hit.type)));
-    b.append(el('div', 't', (I.LABEL_OF[hit.type] || hit.type) + ' · SOCLens'));
+    b.append(el('div', 't', (I.LABEL_OF[hit.type] || hit.type) + ' · IOC Triage'));
     if (st.state && st.state !== 'plain') { b.append(el('span', 'p ' + st.state, st.state.toUpperCase())); }
     if (st.note) b.append(el('div', 's', st.note));
     const out = el('div', 's');
@@ -172,7 +173,7 @@
 
   chrome.storage.onChanged.addListener((ch, area) => {
     if (area !== 'local') return;
-    if (ch.analyst) init();
+    if (ch.analyst || ch.dataConsent) init();
     if (ch.memory && enabled) { stateOf = new Map(); scan(); }
   });
   init();
