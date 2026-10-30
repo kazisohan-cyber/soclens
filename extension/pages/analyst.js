@@ -1,7 +1,7 @@
 /* SOCLens analyst panel: investigate IOCs, ticket notes, email headers, client memory, settings. */
 (function () {
   'use strict';
-  const I = window.VSIoc, E = window.VSEngine, HD = window.VSHeaders;
+  const I = window.VSIoc, E = window.VSEngine, HD = window.VSHeaders, HUNT = window.VSHunt, TRI = window.VSTriage, AI = window.VSAi;
   const $ = (id) => document.getElementById(id);
   const send = (msg) => chrome.runtime.sendMessage(msg);
   const MAX_IOCS = 25;
@@ -10,6 +10,8 @@
   let aiText = '';
   let editingId = null;
   let ctxNotes = [];      // remembered accounts / hostnames found in the pasted text
+  let failedLookups = 0;
+  let suggestion = null;  // triage suggestion for the current results
 
   // Tiny DOM builder: every string becomes text, never HTML (lookup data is untrusted).
   function h(tag, attrs, ...kids) {
@@ -46,6 +48,7 @@
     $('sAi').checked = !!settings.ai;
     $('sSites').value = (settings.highlightSites || []).join('\n');
     $('sName').value = settings.analyst || '';
+    loadAiForm();
     const nKeys = Object.values(keys).filter(Boolean).length;
     $('srcCount').textContent = (settings.publicSources ? '8 free sources' : 'local only') + (nKeys ? ` + ${nKeys} key${nKeys > 1 ? 's' : ''}` : '');
     renderWizard();
@@ -129,11 +132,98 @@
     const keys = {};
     document.querySelectorAll('[data-key]').forEach((f) => { keys[f.dataset.key] = f.value.trim(); });
     await send({ type: 'analystSave', patch: { keys, publicSources: $('sPublic').checked, highlight: $('sHighlight').checked, ai: $('sAi').checked,
-      highlightSites: $('sSites').value.split(/\s+/).filter(Boolean), analyst: $('sName').value.trim().slice(0, 60) } });
+      highlightSites: $('sSites').value.split(/\s+/).filter(Boolean), analyst: $('sName').value.trim().slice(0, 60), byoAi: aiForm() } });
     $('sState').textContent = 'Saved ✓';
     setTimeout(() => { $('sState').textContent = ''; }, 2500);
     loadSettings();
   });
+
+  // ------------------------------------------------------------- your own AI ---
+  for (const [id, P] of [['', { name: 'Off' }], ...Object.entries(AI.PROVIDERS)]) $('aiProvider').append(h('option', { value: id, text: P.name }));
+
+  function aiForm() {
+    return { provider: $('aiProvider').value, model: $('aiModel').value.trim(), url: $('aiUrl').value.trim(), key: $('aiKey').value.trim(), redact: $('aiRedact').checked,
+      blockedClients: $('aiBlocked').value.split('\n').map((x) => x.trim()).filter(Boolean) };
+  }
+  function showAiFields() {
+    const P = AI.PROVIDERS[$('aiProvider').value];
+    $('aiFields').hidden = !P;
+    $('aiStat').textContent = '';
+    if (!P) return;
+    $('aiUrlRow').hidden = !P.askUrl;
+    $('aiKeyRow').hidden = !P.needsKey;
+    $('aiTestNoKey').hidden = !!P.needsKey;
+    $('aiUrl').placeholder = P.urlHint || '';
+    $('aiModel').placeholder = P.model || '';
+    if (P.defaultUrl && !$('aiUrl').value) $('aiUrl').value = P.defaultUrl;
+  }
+  function loadAiForm() {
+    const c = settings.byoAi || {};
+    $('aiProvider').value = c.provider || '';
+    $('aiModel').value = c.model || '';
+    $('aiUrl').value = c.url || '';
+    $('aiKey').value = c.key || '';
+    $('aiRedact').checked = c.redact !== false;
+    $('aiBlocked').value = (c.blockedClients || []).join('\n');
+    showAiFields();
+  }
+  $('aiProvider').addEventListener('change', () => { $('aiUrl').value = ''; showAiFields(); });
+  async function testAi() {
+    const stat = $('aiStat');
+    stat.className = 'keystat';
+    stat.textContent = 'Testing…';
+    try {
+      await AI.test(aiForm());
+      stat.className = 'keystat ok';
+      stat.textContent = '✓ Connected. Now click Save settings.';
+    } catch (e) {
+      stat.className = 'keystat bad';
+      stat.textContent = '✗ ' + e.message;
+    }
+  }
+  $('aiTest').addEventListener('click', testAi);
+  $('aiTest2').addEventListener('click', testAi);
+
+  function aiEvidence() {
+    const c = settings.byoAi || {};
+    return AI.evidence(current, { redact: c.redact !== false, notes: ctxNotes, client: settings.activeClient || '', analyst: settings.analyst || '', context: $('ctx').value.trim(), suggestion });
+  }
+
+  function renderByo() {
+    const box = $('byo');
+    const c = (settings && settings.byoAi) || {};
+    box.textContent = '';
+    box.hidden = true;
+    const P = AI.PROVIDERS[c.provider];
+    if (!P || AI.problem(c) || !current.length) return;
+    box.hidden = false;
+    if (AI.blocked(c, settings.activeClient)) {
+      box.append(h('span', { class: 'lbl', text: `${P.name} is turned off for ${settings.activeClient} in Settings` }));
+      return;
+    }
+    const out = h('div', { class: 'byo-out' });
+    const buttons = Object.entries(AI.TASKS).map(([task, T]) => h('button', { text: T.label, onclick: async (e) => {
+      const btn = e.target;
+      box.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      out.textContent = '';
+      out.append(h('span', { class: 'spin' }), ` Asking ${P.name}…`);
+      try {
+        const ans = await AI.ask(c, AI.SYSTEM, AI.prompt(task, aiEvidence()));
+        if (task === 'summary') aiText = ans;
+        out.textContent = '';
+        out.append(h('span', { class: 'lbl', text: `${P.name}: ${T.label} (draft, verify)${task === 'summary' ? ', added to the ticket note' : ''}` }), h('div', { class: 'byo-text', text: ans }),
+          h('button', { class: 'link', text: 'Copy', onclick: (ev) => copyText(ans, ev.target) }));
+      } catch (err) {
+        out.textContent = '';
+        out.append(h('span', { class: 'chip bad', text: 'AI error' }), ' ', err.message);
+      }
+      box.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+      btn.blur();
+    } }));
+    const sent = h('pre', { class: 'sent' });
+    box.append(h('span', { class: 'lbl', text: `Ask ${P.name}` + (P.local ? ' (your own machine or network)' : '') }), h('div', { class: 'row wrap byo-btns' }, buttons),
+      h('details', { ontoggle: (e) => { if (e.target.open) sent.textContent = JSON.stringify(aiEvidence(), null, 1); } }, h('summary', { text: 'What gets sent' }), sent), out);
+  }
 
   // ----------------------------------------------------------- investigate ---
   $('q').addEventListener('input', () => {
@@ -182,6 +272,7 @@
     await Promise.all([worker(), worker(), worker(), worker()]);
     $('go').disabled = false;
     current = results.filter((r) => r && r.report);
+    failedLookups = results.length - current.length;
     try { ctxNotes = (await send({ type: 'memoryContext', text: $('q').value })) || []; } catch (_) { ctxNotes = []; }
     renderOverall();
     renderClientContext();
@@ -204,6 +295,19 @@
     if (g === 'hash') L.push(['MalwareBazaar', 'https://bazaar.abuse.ch/browse.php?search=' + encodeURIComponent(v)], ['Hybrid Analysis', 'https://www.hybrid-analysis.com/search?query=' + v]);
     if (g === 'cve') L.push(['NVD', 'https://nvd.nist.gov/vuln/detail/' + v], ['CISA KEV', 'https://www.cisa.gov/known-exploited-vulnerabilities-catalog?search_api_fulltext=' + v], ['GitHub PoCs', 'https://github.com/search?type=repositories&q=' + v]);
     return L;
+  }
+
+  /** "Hunt: SentinelOne Defender ...": one click copies a ready query for that tool and shows it. */
+  function huntRow(iocs, label) {
+    const qs = HUNT.queries(iocs);
+    if (!qs.length) return null;
+    const shown = h('pre', { class: 'sent', hidden: true });
+    return h('div', { class: 'hunt small' }, h('span', { class: 'muted', text: (label || 'Hunt') + ': ' }), qs.map((q) => h('button', { class: 'chip', title: `Copy a ${q.hint} query (last ${HUNT.DAYS} days)`, text: q.name, onclick: (e) => {
+      copyText(q.query, e.target);
+      shown.hidden = false;
+      shown.textContent = q.query;
+      if (settings.huntTool !== q.id) { settings.huntTool = q.id; send({ type: 'analystSave', patch: { huntTool: q.id } }); }
+    } })), shown);
   }
 
   function renderCard(card, r, ioc) {
@@ -231,6 +335,8 @@
     card.append(chips);
     const piv = pivots(report);
     if (piv.length) card.append(h('div', { class: 'small' }, h('span', { class: 'muted', text: 'Pivot: ' }), piv.map(([n, u]) => h('a', { class: 'chip', href: u, target: '_blank', rel: 'noopener', text: n }))));
+    const huntOne = huntRow([report]);
+    if (huntOne) card.append(huntOne);
     const det = h('div', { class: 'det' });
     card.append(h('div', { class: 'actions' },
       h('button', { text: 'Copy defanged', onclick: (e) => copyText(I.defang(report.value, report.type), e.target) }),
@@ -249,8 +355,28 @@
     $('ovText').textContent = `${current.length} indicator${current.length > 1 ? 's' : ''}` + (bad ? `, ${bad} need attention` : ', nothing alarming');
     $('ovTime').textContent = new Date().toLocaleTimeString();
     $('copyState').textContent = '';
+    renderTriage();
     aiSummarize();
+    renderByo();
   }
+
+  function renderTriage() {
+    suggestion = TRI.decide(current, { failed: failedLookups });
+    const box = $('triage');
+    box.textContent = '';
+    box.hidden = !suggestion;
+    $('decision').value = '';
+    if (!suggestion) return;
+    box.className = 'triage t-' + suggestion.decision;
+    box.append(h('div', {}, h('span', { class: 'lbl', text: 'Suggested' }), h('b', { text: suggestion.label }), h('span', { class: 'muted small', text: ` · ${suggestion.detail} · confidence ${suggestion.confidence}` })),
+      h('ul', { class: 'why' }, suggestion.why.map((t) => h('li', { class: suggestion.decision === 'close' ? 'good' : suggestion.decision === 'context' ? 'info' : 'bad', text: t }))));
+    const targets = current.filter((x) => x.a.verdict !== 'benign');
+    const all = huntRow((targets.length ? targets : current).map((x) => x.report), current.length > 1 ? 'Hunt all' : 'Hunt');
+    $('huntAll').textContent = '';
+    $('huntAll').hidden = !all || current.length < 2;
+    if (all && current.length > 1) $('huntAll').append(all);
+  }
+  $('decision').append(h('option', { value: '', text: 'Not decided yet' }), ...TRI.DECISIONS.map((d) => h('option', { value: d, text: d })));
 
   function renderClientContext() {
     const box = $('clientCtx');
@@ -263,12 +389,20 @@
 
   function noteOpts() {
     const worst = current.slice().sort((x, y) => (E.RANK[y.a.verdict] || 0) - (E.RANK[x.a.verdict] || 0))[0];
-    return { context: $('ctx').value.trim(), analyst: settings && settings.analyst, summary: aiText || (worst ? worst.a.summary : ''),
+    return { context: $('ctx').value.trim(), analyst: settings && settings.analyst, summary: aiText ? aiText + ' (AI draft, verify)' : (worst ? worst.a.summary : ''),
+      suggestion: suggestion ? `${suggestion.label} (${suggestion.detail}, confidence ${suggestion.confidence})` : '', decision: $('decision').value,
       client: (settings && settings.activeClient) || '', clientContext: ctxNotes.map((m) => m._desc) };
   }
   $('copyNote').addEventListener('click', (e) => {
     const n = E.ticketNote(current, noteOpts());
     copyText(n.text, e.currentTarget, n.html, 'Copied. Paste into the HaloPSA / ticket note (formatting kept).');
+  });
+  $('copyEsc').addEventListener('click', (e) => {
+    const tool = settings && settings.huntTool;
+    const targets = current.filter((x) => x.a.verdict !== 'benign').map((x) => x.report);
+    const q = tool ? HUNT.queries(targets).find((x) => x.id === tool) : null;
+    const opts = noteOpts();
+    copyText(TRI.escalationNote(current, suggestion, { context: opts.context, analyst: opts.analyst, client: opts.client, clientContext: opts.clientContext, hunt: q }), e.currentTarget, null, 'Escalation note copied.');
   });
   $('copyMd').addEventListener('click', (e) => copyText(E.ticketNote(current, noteOpts()).markdown, e.currentTarget, null, 'Markdown copied.'));
   $('copyIocs').addEventListener('click', (e) => copyText(current.map((x) => `${I.defang(x.report.value, x.report.type)}\t${I.LABEL_OF[x.report.type]}\t${x.a.verdict}`).join('\n'),

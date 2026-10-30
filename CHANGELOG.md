@@ -2,6 +2,17 @@
 
 All notable changes to SOCLens. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.6.0] - 2026-10-30
+
+### Added
+- **Hunt queries:** one click copies a ready query for an indicator, or for all of them, for SentinelOne Deep Visibility, Microsoft Defender, Microsoft Sentinel, Splunk or Securonix Spotter. Values are escaped so text from an alert cannot change the query.
+- **Close or escalate suggestion:** after an investigation SOCLens suggests Escalate, Investigate first, Close or Needs more information, with the reasons. It never suggests closing when a lookup failed, when an indicator is unknown, or when an internal asset is not identified. You record your own decision, and it goes on the ticket note.
+- **Escalation note:** a short hand-over for L2 with the reason, evidence, next steps, what was and wasn't checked, and your last used hunt query.
+- **Your own AI (optional, off by default):** connect OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, a local model (Ollama, LM Studio) or any OpenAI-compatible endpoint for a summary, next checks or a client email draft. Nothing is sent until you click, you can see exactly what goes out, your pasted alert is never sent, client data is masked by default, and individual clients can be excluded. The AI never changes a verdict.
+
+### Changed
+- AI summaries are labelled "AI draft, verify" on ticket notes.
+
 ## [0.5.1] - 2026-10-20
 
 ### Added

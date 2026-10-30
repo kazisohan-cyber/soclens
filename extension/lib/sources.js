@@ -19,6 +19,8 @@
     highlightSites: ['securonix.net', 'securonix.com', 'halopsa.com', 'haloitsm.com', 'haloservicedesk.com',
       'sentinelone.net', 'security.microsoft.com', 'portal.azure.com', 'app.slack.com', 'teams.microsoft.com'],
     ai: true,                 // on-device AI summary when the browser offers it
+    byoAi: { provider: '', model: '', url: '', key: '', redact: true, blockedClients: [] }, // the analyst's own AI: used only on click
+    huntTool: '',             // SIEM / EDR last used for a hunt query, added to escalation notes
     analyst: '',              // name printed on ticket notes
     wizardDone: false,        // key setup guide dismissed
     activeClient: ''          // client the analyst is working on ('' = all clients)

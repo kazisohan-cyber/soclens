@@ -87,3 +87,15 @@ table.hops th, table.hops td { padding: 3px 4px; border-top: 1px solid var(--lin
 .mem.expired { opacity: .75; border-style: dashed; }
 .mem .meta { font-size: 11.5px; color: var(--muted); }
 .chip.warn { color: var(--warn); border-color: var(--warn); }
+.triage { margin-top: 8px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); border-left-width: 4px; font-size: 13px; }
+.triage .lbl { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.triage ul.why { margin-bottom: 0; }
+.t-escalate { border-left-color: var(--block); } .t-investigate { border-left-color: var(--warn); } .t-close { border-left-color: var(--ok); }
+.hunt { margin-top: 6px; }
+.hunt .chip { background: none; cursor: pointer; line-height: 1.5; }
+.hunt .chip:hover { border-color: var(--accent); color: var(--accent); }
+pre.sent { margin: 6px 0 0; padding: 6px 8px; max-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); font: 11px/1.4 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.byo-btns { margin: 4px 0 2px; }
+.byo-btns button { padding: 4px 8px; font-size: 12px; }
+.byo-out { margin-top: 6px; }
+.byo-text { white-space: pre-wrap; overflow-wrap: anywhere; }

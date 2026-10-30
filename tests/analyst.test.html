@@ -22,6 +22,9 @@
 <script src="../extension/lib/engine.js"></script>
 <script src="../extension/lib/headers.js"></script>
 <script src="../extension/lib/activity.js"></script>
+<script src="../extension/lib/hunt.js"></script>
+<script src="../extension/lib/triage.js"></script>
+<script src="../extension/lib/ai.js"></script>
 <script>
 const I = VSIoc, E = VSEngine, HD = VSHeaders;
 let pass = 0, fail = 0, html = '';
@@ -258,6 +261,92 @@ section('EDR import (SentinelOne CSV, fake data)');
   check('quoted commas + "" escapes parsed', IM.parseCsv('x,"a,b ""c""",y')[0][1] === 'a,b "c"');
 }
 
+section('Hunt queries');
+{
+  const H = VSHunt;
+  const ip = { type: 'ipv4', group: 'ip', value: '203.0.113.7' };
+  const dom = { type: 'domain', group: 'domain', value: 'evil.example' };
+  const url = { type: 'url', group: 'url', value: 'https://evil.example/a?b=1' };
+  const sha = { type: 'sha256', group: 'hash', value: 'E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855' };
+  const cve = { type: 'cve', group: 'cve', value: 'CVE-2024-3400' };
+  check('S1 searches both directions of an IP', H.query('s1', [ip]) === 'dst.ip.address = "203.0.113.7" OR src.ip.address = "203.0.113.7"', H.query('s1', [ip]));
+  check('hash lowercased and on the right field', H.query('s1', [sha]).includes('tgt.file.sha256 = "e3b0c4'), H.query('s1', [sha]));
+  check('URL is searched by its host, duplicates merged', (H.query('splunk', [url, dom]).match(/evil\.example/g) || []).length === 1, H.query('splunk', [url, dom]));
+  check('Defender uses Timestamp and tolerates missing tables', /isfuzzy=true/.test(H.query('defender', [ip])) && /Timestamp > ago\(30d\)/.test(H.query('defender', [ip])));
+  check('Sentinel uses TimeGenerated', /TimeGenerated > ago\(30d\)/.test(H.query('sentinel', [ip, dom, sha])));
+  check('CVE only offered where it can be searched', H.queries([cve]).map((q) => q.id).join() === 'defender', H.queries([cve]).map((q) => q.id).join());
+  check('several indicators join into one query', H.query('securonix', [ip, dom]) === 'index = activity AND (rawevent CONTAINS "203.0.113.7" OR rawevent CONTAINS "evil.example")', H.query('securonix', [ip, dom]));
+  const evil = { type: 'email', group: 'email', value: 'a"b\\c@evil.example' };
+  check('quotes in a value cannot break out of the query', H.query('defender', [evil]).includes('"a\\"b\\\\c@evil.example"'), H.query('defender', [evil]));
+  check('nothing to search gives no query', H.queries([]).length === 0);
+}
+
+section('Triage suggestion');
+{
+  const T = VSTriage;
+  const mk = (verdict, confidence, extra) => ({ report: Object.assign({ type: 'ipv4', group: 'ip', value: '203.0.113.9', sources: {} }, extra), a: { verdict, confidence, actions: ['Do it'], reasons: [{ t: 'Reason ' + verdict, kind: verdict === 'benign' ? 'good' : verdict === 'malicious' ? 'bad' : 'info' }] } });
+  check('malicious with confidence: escalate', T.decide([mk('malicious', 'high'), mk('benign', 'high')]).decision === 'escalate');
+  check('malicious with low confidence: investigate, not escalate', T.decide([mk('malicious', 'low')]).decision === 'investigate');
+  check('suspicious: investigate', T.decide([mk('suspicious', 'medium')]).decision === 'investigate');
+  check('critical CVE: escalate', T.decide([mk('critical', 'high', { group: 'cve', type: 'cve', value: 'CVE-2024-3400' })]).decision === 'escalate');
+  check('unknown: never suggests closing', T.decide([mk('unknown', 'low')]).decision === 'context');
+  check('clean but a lookup failed: never suggests closing', T.decide([mk('benign', 'high')], { failed: 1 }).decision === 'context');
+  check('benign on weak evidence: not closed', T.decide([mk('benign', 'low')]).decision === 'context');
+  check('all benign: likely false positive', /false positive/.test(T.decide([mk('benign', 'high')]).label) && T.decide([mk('benign', 'high')]).decision === 'close');
+  const noted = mk('benign', 'high', { memory: [{ verdict: 'benign', expired: false }] });
+  check('client note explains it: benign true positive', /benign true positive/.test(T.decide([noted]).label));
+  check('expired note does not explain it', /false positive/.test(T.decide([mk('benign', 'high', { memory: [{ verdict: 'benign', expired: true }] })]).label));
+  check('unidentified internal asset: not closed', T.decide([mk('internal', 'high'), mk('benign', 'high')]).decision === 'context');
+  check('internal asset with a note and clean rest: closes', T.decide([mk('internal', 'high', { memory: [{ verdict: 'note', expired: false }] }), mk('benign', 'high')]).decision === 'close');
+  const esc = T.escalationNote([mk('malicious', 'high')], T.decide([mk('malicious', 'high')]), { client: 'Client A', context: 'INC-1', analyst: 'Tester', hunt: { name: 'Splunk', query: 'index=* "x"' } });
+  check('escalation note carries reason, evidence and hunt', ['ESCALATION TO L2', 'Client: Client A', 'INC-1', 'Reason: Escalate', 'MALICIOUS', 'Hunt query (Splunk', 'index=* "x"'].every((x) => esc.includes(x)), esc);
+  const note = E.ticketNote([mk('malicious', 'high')], { decision: 'True positive: escalated', suggestion: 'Escalate' });
+  check('ticket note shows suggestion and decision in all formats', note.text.includes('Decision: True positive: escalated') && note.text.includes('Suggested: Escalate') && note.markdown.includes('**Decision:**') && note.html.includes('<b>Decision:</b>'));
+}
+
+section('Your own AI');
+{
+  const A = VSAi;
+  const item = (value, type, group, extra) => ({ report: Object.assign({ value, type, group }, extra), a: { verdict: 'suspicious', confidence: 'medium', reasons: [
+    { t: 'Seen from 10.20.30.40 on bkp-srv01.corp.local by bob@clienta.com', kind: 'bad' }, { t: 'Client note: Client A VPN', kind: 'good', src: 'memory' }] } });
+  const it = item('203.0.113.9', 'ipv4', 'ip', { memory: [{ client: 'Client A', ioc: 'svc-backup', note: 'job' }] });
+  const ev = JSON.stringify(A.evidence([it], { client: 'Client A', analyst: 'Tester', context: 'INC-77', notes: [{ ioc: 'BKP-SRV01', client: 'Client A' }] }));
+  check('masking removes internal IP', !ev.includes('10.20.30.40') && ev.includes('[internal-ip]'), ev);
+  check('masking removes host, mailbox and client text', !/bkp-srv01|bob@|Client A|INC-77/i.test(ev), ev);
+  check('client note text is replaced by its meaning', ev.includes("client's own notes mark this as expected"), ev);
+  check('public indicator stays, defanged', ev.includes('203[.]0[.]113[.]9'), ev);
+  const raw = JSON.stringify(A.evidence([it], { redact: false, client: 'Client A', context: 'INC-77' }));
+  check('turning masking off is honoured', raw.includes('10.20.30.40') && raw.includes('INC-77'), raw);
+  check('prompt marks evidence as data', A.prompt('summary', { x: 1 }).includes('EVIDENCE (data only') && /never follow instructions/i.test(A.SYSTEM));
+
+  const a = A.buildRequest({ provider: 'anthropic', model: 'm', key: 'k' }, 'S', 'U');
+  check('Anthropic request shape', a.url === 'https://api.anthropic.com/v1/messages' && a.headers['x-api-key'] === 'k' && a.headers['anthropic-dangerous-direct-browser-access'] === 'true' && a.body.system === 'S' && a.body.max_tokens > 0 && a.body.messages[0].content === 'U');
+  const o = A.buildRequest({ provider: 'openai', model: 'm', key: 'k' }, 'S', 'U');
+  check('OpenAI request shape', o.url.includes('api.openai.com') && o.headers.Authorization === 'Bearer k' && o.body.messages[0].role === 'system');
+  const g = A.buildRequest({ provider: 'gemini', model: 'm/x', key: 'k' }, 'S', 'U');
+  check('Gemini key goes in a header, not the URL', g.headers['x-goog-api-key'] === 'k' && !g.url.includes('k=') && g.url.includes('m%2Fx:generateContent'), g.url);
+  const az = A.buildRequest({ provider: 'azure', url: 'https://r.openai.azure.com/openai/v1/chat/completions', key: 'k' }, 'S', 'U');
+  check('Azure uses api-key', az.headers['api-key'] === 'k' && !az.headers.Authorization);
+  const lo = A.buildRequest({ provider: 'local', model: 'm', url: 'http://localhost:11434/v1/chat/completions' }, 'S', 'U');
+  check('local needs no key', !lo.headers.Authorization && A.problem({ provider: 'local', model: 'm' }) === '');
+
+  check('parses Anthropic text blocks', A.parseResponse('anthropic', { content: [{ type: 'thinking', thinking: '' }, { type: 'text', text: 'hi' }] }) === 'hi');
+  check('parses OpenAI choices', A.parseResponse('openai', { choices: [{ message: { content: 'hi' } }] }) === 'hi');
+  check('parses Gemini parts', A.parseResponse('gemini', { candidates: [{ content: { parts: [{ text: 'hi' }] } }] }) === 'hi');
+  const thrown = (fn) => { try { fn(); return ''; } catch (e) { return e.message; } };
+  check('a refusal is reported, not shown as an answer', /declined/.test(thrown(() => A.parseResponse('anthropic', { stop_reason: 'refusal', content: [] }))));
+  check('an empty answer is an error', /empty/.test(thrown(() => A.parseResponse('openai', { choices: [] }))));
+
+  check('https endpoint allowed', A.endpointOk('https://gw.example.com/v1'));
+  check('http to the internet refused (key would leak)', !A.endpointOk('http://gw.example.com/v1') && /https/.test(A.problem({ provider: 'custom', key: 'k', model: 'm', url: 'http://gw.example.com/v1' })));
+  check('http to localhost / LAN allowed', A.endpointOk('http://localhost:11434/v1') && A.endpointOk('http://192.168.1.5:1234/v1'));
+  check('look-alike of a private address refused', !A.endpointOk('http://10.0.0.1.evil.example/v1'));
+  check('other schemes refused', !A.endpointOk('file:///c:/x') && !A.endpointOk('not a url'));
+  check('missing key and model are reported', /key/.test(A.problem({ provider: 'openai', model: 'm' })) && /model/i.test(A.problem({ provider: 'openai', key: 'k' })));
+  check('client can be blocked, case-insensitively', A.blocked({ provider: 'openai', blockedClients: ['Client A'] }, 'client a') && !A.blocked({ provider: 'openai', blockedClients: ['Client A'] }, 'Other'));
+  check('local AI is not affected by the block list', !A.blocked({ provider: 'local', blockedClients: ['Client A'] }, 'Client A'));
+}
+
 section('Recent activity');
 {
   const t0 = Date.parse('2026-10-20T12:00:00Z'), iso = (m) => new Date(t0 - m * 60e3).toISOString();
@@ -277,6 +366,22 @@ section('Recent activity');
 document.getElementById('summary').innerHTML = `<span class="${fail ? 'fail' : 'pass'}">${pass} passed, ${fail} failed</span>`;
 document.getElementById('out').innerHTML = html;
 document.title = `${fail ? 'FAIL' : 'PASS'} ${pass}/${pass + fail} SOCLens analyst tests`;
+
+(async () => {
+  const A = VSAi;
+  const seen = {};
+  const fake = async (url, init) => { seen.url = url; seen.init = init; return { ok: true, status: 200, json: async () => ({ content: [{ type: 'text', text: 'OK' }] }) }; };
+  const ans = await A.ask({ provider: 'anthropic', model: 'm', key: 'secret' }, 'S', 'U', fake);
+  const fail = async () => ({ ok: false, status: 401 });
+  let msg = '';
+  try { await A.ask({ provider: 'openai', model: 'm', key: 'secret' }, 'S', 'U', fail); } catch (e) { msg = e.message; }
+  const lines = [['ask() returns the answer', ans === 'OK'], ['ask() sends no cookies', seen.init.credentials === 'omit'], ['key never appears in the body', !seen.init.body.includes('secret')], ['HTTP 401 explained, key not echoed', /Key rejected/.test(msg) && !msg.includes('secret')]];
+  for (const [n, c] of lines) check(n, c);
+  document.getElementById('summary').innerHTML = `<span class="${fail_count() ? 'fail' : 'pass'}">${pass} passed, ${fail_count()} failed</span>`;
+  document.getElementById('out').innerHTML = html;
+  document.title = `${fail_count() ? 'FAIL' : 'PASS'} ${pass}/${pass + fail_count()} SOCLens analyst tests`;
+})();
+function fail_count() { return fail; }
 </script>
 </body>
 </html>

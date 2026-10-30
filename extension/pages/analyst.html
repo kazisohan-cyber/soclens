@@ -41,13 +41,18 @@
       <div><span class="pill" id="ovPill"></span> <b id="ovText"></b></div>
       <span class="muted small" id="ovTime"></span>
     </div>
+    <div id="triage" class="triage" hidden></div>
     <div id="ai" class="ai" hidden></div>
+    <div id="byo" class="ai" hidden></div>
     <div id="clientCtx" class="ctx" hidden></div>
     <div class="row wrap">
       <button class="primary" id="copyNote">Copy ticket note</button>
       <button id="copyMd">Copy Markdown</button>
       <button id="copyIocs">Copy IOCs (defanged)</button>
+      <button id="copyEsc">Copy escalation note</button>
     </div>
+    <label class="f">Your decision <span class="muted small">(goes on the ticket note)</span><select id="decision"></select></label>
+    <div id="huntAll" class="hunt small" hidden></div>
     <div class="muted small" id="copyState"></div>
   </div>
   <div id="results"></div>
@@ -124,6 +129,21 @@
     <label class="toggle"><input type="checkbox" id="sAi"><span><b>On-device AI summary</b><br><span class="muted small" id="aiState">Uses the browser's built-in model when available. Nothing leaves the device.</span></span></label>
     <label class="f">Your name on ticket notes<input type="text" id="sName" placeholder="e.g. Arefin (L1)"></label>
   </div>
+  <div class="card compact">
+    <h3>Your own AI <span class="muted small">(optional)</span></h3>
+    <p class="muted small">Add a summary, next checks or a client email through your own AI. Nothing is sent until you click a button after an investigation, and you can see exactly what goes out. Your pasted alert is never sent.</p>
+    <label class="f">Provider<select id="aiProvider"></select></label>
+    <div id="aiFields" hidden>
+      <label class="f" id="aiUrlRow">Endpoint URL<input type="text" id="aiUrl" spellcheck="false" autocomplete="off"></label>
+      <label class="f">Model<input type="text" id="aiModel" spellcheck="false" autocomplete="off"></label>
+      <div id="aiKeyRow"><label class="f">API key <span class="muted small">(stored only in this browser, usage is billed by your provider)</span></label>
+        <div class="keyrow"><input type="password" id="aiKey" autocomplete="off"><button id="aiTest">Test</button></div></div>
+      <div id="aiTestNoKey" class="row" hidden><button id="aiTest2">Test</button></div>
+      <div class="keystat" id="aiStat"></div>
+      <label class="toggle"><input type="checkbox" id="aiRedact"><span><b>Mask client data before sending</b><br><span class="muted small">Replaces internal IPs and hostnames, mailbox names, client names and anything from your client notes. It cannot recognise every internal name, so check "What gets sent".</span></span></label>
+      <label class="f">Never use for these clients <span class="muted small">(one per line)</span><textarea id="aiBlocked" rows="2" spellcheck="false"></textarea></label>
+    </div>
+  </div>
   <div class="row"><button class="primary" id="sSave">Save settings</button><span class="muted small" id="sState"></span></div>
 </section>
 
@@ -133,6 +153,9 @@
 <script src="../lib/importers.js"></script>
 <script src="../lib/engine.js"></script>
 <script src="../lib/headers.js"></script>
+<script src="../lib/hunt.js"></script>
+<script src="../lib/triage.js"></script>
+<script src="../lib/ai.js"></script>
 <script src="analyst.js"></script>
 </body>
 </html>
