@@ -40,7 +40,7 @@ PROTECTION WHILE YOU BROWSE (turned on only after you agree)
 • Scans email in Gmail and Outlook on the web, shows a warning banner and disables dangerous links.
 • Credential guard: if your work password is typed on a site that is not part of your organisation, the field is cleared before it is sent.
 
-WHAT SOCLENS READS AND SENDS
+WHAT IOC TRIAGE READS AND SENDS
 On your device only:
 • The address of each page you open, and the content of pages and webmail messages, are analysed locally to detect phishing.
 • Your work password is stored only as a salted hash, learned when you sign in on a corporate login page, and is never sent.
@@ -84,6 +84,18 @@ Source code: https://github.com/kazisohan-cyber/soclens
 All five use `tests/analyst-preview.html?demo=1`: documentation IP ranges (RFC 5737), `.example` domains, the EICAR test hash and public CVE data. The capture served no data files, and no request left the machine. To rebuild them after a UI change, run `node docs/store/tools/capture-screenshots.mjs`.
 
 ## Test instructions tab
+
+Leave Username and Password empty. **Additional instructions** has a 500-character limit, so paste this block:
+
+```text
+No account or API key needed. After install, click Agree and turn on in the welcome page; protection stays off until then.
+1. Open https://login.microsoftonline.com.evil.top/ : a block page appears before load.
+2. Toolbar icon > Open next to Analyst panel. Paste: CVE-2024-3400 and 8.8.8.8 then click Investigate. Verdicts appear with sources.
+3. Click Copy ticket note.
+AI, console and keyed lookups are optional and off by default. Source: github.com/kazisohan-cyber/soclens
+```
+
+The longer version below is too long for that field. Keep it for a reviewer's questions.
 
 ```text
 No account, login or API key is needed.

@@ -16,6 +16,8 @@ Free, open source, privacy-first. A Chrome / Edge extension (Manifest V3) by Ops
 
 ## Install (1 minute)
 
+The Chrome Web Store listing is in review. Until it is live, install from the release:
+
 1. Download `ioc-triage-extension-v*.zip` from the [latest release](https://github.com/kazisohan-cyber/soclens/releases/latest) and unzip it.
 2. Open `chrome://extensions` (or `edge://extensions`) → turn on **Developer mode** → **Load unpacked** → pick the unzipped folder.
 3. On the welcome page, read what is handled and click **Agree and turn on** for browsing protection. The analyst panel works without it.

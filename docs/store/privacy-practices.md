@@ -1,6 +1,6 @@
 # Privacy practices tab
 
-Paste each block into the matching dashboard field. Each block is under 1,000 characters. Answers match `PRIVACY.md` and the 0.6.0 code, except for the gaps listed in `README.md`.
+Paste each block into the matching dashboard field. Each block is under 1,000 characters. Answers match `PRIVACY.md` and the 0.8.0 code. `README.md` lists the remaining risks.
 
 ## Single purpose description
 
@@ -43,7 +43,7 @@ Adds the right-click items "IOC Triage: Investigate" for selected text, "Investi
 **sidePanel**
 
 ```text
-The analyst panel (Investigate, Headers, Memory and Settings) opens in Chrome's side panel, so an analyst can work beside the alert or ticket they are reading. It opens only when the user asks, from the toolbar popup or the right-click menu.
+The analyst panel (Investigate, Email, Memory, Shift and Settings) opens in Chrome's side panel, so an analyst can work beside the alert or ticket they are reading. It opens only when the user asks, from the toolbar popup or the right-click menu.
 ```
 
 **clipboardWrite**
@@ -95,7 +95,7 @@ Google's form asks what personal and sensitive data you "plan to collect from us
 | User activity | **Yes** | Password fields are watched for the credential guard, and that value is compared only as a hash on the device. Block, bypass and report actions go in the local log, and to the console if one is connected. |
 | Website content | **Yes** | Page text and titles are analysed on the device for fake logins, and text the user selects can be investigated. Only the extracted indicators are sent. |
 
-**Certifications: tick all three.** All are true for 0.6.0.
+**Certifications: tick all three.** All are true for 0.8.0.
 
 - I do not sell user data to third parties.
 - I do not use or transfer user data for purposes that are unrelated to my item's single purpose.
@@ -107,7 +107,7 @@ Google's form asks what personal and sensitive data you "plan to collect from us
 https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md
 ```
 
-This URL is live and already includes the 0.6.0 "Your own AI" section.
+This URL is live and includes the "Your own AI" section and the Limited Use statement.
 
 ## The optional "Your own AI" connection, for a reviewer's questions
 

@@ -1,6 +1,6 @@
 # IOC Triage: Chrome Web Store submission pack
 
-Prepared 2026-10-30 and updated for IOC Triage 0.8.0. Nothing has been committed, paid for or submitted.
+**Status:** IOC Triage 0.8.0 was submitted on 2026-10-30 and is pending review. Store item ID: `dncgneacahomieionjkaofmfnojlkfmc`. It was submitted with `<all_urls>`.
 
 | File | Use it for |
 |---|---|
@@ -10,22 +10,22 @@ Prepared 2026-10-30 and updated for IOC Triage 0.8.0. Nothing has been committed
 | [screenshots/](screenshots/) | Five 1280x800 PNGs from sample data |
 | [tools/capture-screenshots.mjs](tools/capture-screenshots.mjs) | Rebuilds the screenshots |
 
-## Before you submit
+## Before the next submission
 
 The welcome page, consent step and `PRIVACY.md` gaps found earlier are fixed in 0.8.0. These remain.
 
-### 1. Narrow `<all_urls>` (recommended)
+### 1. Narrow `<all_urls>` (recommended for the next version)
 
 Google requires the narrowest permission that works. `<all_urls>` also covers `file://`, but content scripts run only on http and https, and I found no `file:` handling in `background.js` or `lib/`. Replacing it with `http://*/*` and `https://*/*` should lose nothing. It will still count as broad access and is likely to get the same in-depth review. Retest after the change. If you make it, change the permission name in the field heading and in the first paste block; the justification still applies.
 
-### 2. Risks to accept or watch (no action needed to submit)
+### 2. Risks to watch
 
 - **Single purpose.** Phishing protection plus an analyst panel could look like two products to a reviewer. The statement frames both as one focus area, which Google's FAQ allows. If it is rejected as multi-purpose (`Red Magnesium`), the fix is two separate extensions.
 - **API keys at rest.** Google's FAQ (question 9) says data at rest should use strong encryption such as AES. API keys sit unencrypted in `chrome.storage.local`, which only this extension can read. The password is a salted PBKDF2 hash, not stored in clear text. Reviewers may never raise this, but I can't rule it out.
 - **Icon size.** The artwork in `icon128.png` is 104x112 inside 128x128, and Google suggests about 96x96. This is guidance and shouldn't block anything.
 - **Screenshots show only the analyst panel,** as requested. The popup and block page are not shown.
 
-## What you must do yourself
+## Submission steps (the same for each new version)
 
 1. Decide on item 1 and, if you change the code, release the new version before packaging.
 2. In the [developer dashboard](https://chrome.google.com/webstore/devconsole), register: accept the developer agreement and pay the one-time fee. The docs no longer state the amount, and it has historically been US$5, so the dashboard shows the real figure. Google suggests a dedicated email address, because it can't be changed later.
@@ -34,7 +34,7 @@ Google requires the narrowest permission that works. `<all_urls>` also covers `f
 5. Build the package from the repo root in PowerShell 7:
 
    ```powershell
-   Compress-Archive -Path extension\* -DestinationPath ioc-triage-extension-v0.6.0.zip -Force
+   Compress-Archive -Path extension\* -DestinationPath ioc-triage-extension-v0.8.0.zip -Force
    ```
 
 6. Click **Add new item** and upload the zip. `*.zip` is already ignored by git.
@@ -44,7 +44,7 @@ Google requires the narrowest permission that works. `<all_urls>` also covers `f
 10. Click **Submit for review**. Expect a longer review because of the broad host access. I found no official figure for how long it takes.
 11. After approval, update the README's install section, the website and the policy snippets with the new store extension ID. Developer-mode installs won't update automatically, so those users need to reinstall from the store.
 
-Committing this folder publishes it, because GitHub Pages serves `docs/`. The pack would be readable under `/soclens/store/`. That is harmless, since it holds no secrets, but the choice is yours.
+GitHub Pages serves `docs/`, so this pack is public under `/soclens/store/`. It holds no secrets.
 
 ## Requirements checked on 2026-10-30
 
@@ -72,4 +72,6 @@ Committing this folder publishes it, because GitHub Pages serves `docs/`. The pa
 
 - Decision memory, `.eml` triage, shift handover and an encrypted team file round trip ran in the real panel with no page errors. Test pages: 211 and 58 cases pass.
 
-Not tested: a real store upload, Chrome with the extension loaded (the test used Edge), the toolbar popup and right-click routes into the panel, and importing the block list files into a real firewall, Defender tenant or STIX platform. The video hasn't been recorded.
+- In Chrome with the unpacked extension: consent, the block page and an investigation of `CVE-2024-3400 and 8.8.8.8` worked. The zip uploaded to the store without an error.
+
+Not tested: **Copy ticket note** in Chrome (it passed in Edge), the right-click route into the panel, and importing the block list files into a real firewall, Defender tenant or STIX platform. The video hasn't been recorded.
