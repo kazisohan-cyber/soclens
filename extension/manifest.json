@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "IOC Triage – IOC Lookup, Threat Intel & SOC Analyst Assistant",
   "short_name": "IOC Triage",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Instant verdicts for any IP, domain, URL, hash or CVE, ticket notes, email header analysis, and phishing protection.",
   "author": "OpsVantage",
   "minimum_chrome_version": "116",

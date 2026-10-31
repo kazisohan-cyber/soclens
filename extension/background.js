@@ -2,7 +2,7 @@
  * IOC Triage service worker: navigation guard, page verdicts, credential guard,
  * email verdicts, event log + SOC reporting, remote blocklist sync, domain-age lookups.
  */
-importScripts('lib/analyzer.js', 'lib/config.js', 'lib/ioc.js', 'lib/memory.js', 'lib/engine.js', 'lib/sources.js');
+importScripts('lib/public-suffixes.js', 'lib/analyzer.js', 'lib/config.js', 'lib/ioc.js', 'lib/memory.js', 'lib/engine.js', 'lib/sources.js');
 const A = self.VSAnalyzer;
 const VERSION = chrome.runtime.getManifest().version;
 const BYPASS_MINUTES = 60;

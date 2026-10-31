@@ -8,25 +8,8 @@
 
   // ---------------------------------------------------------------- data ---
 
-  // Multi-label public suffixes we care about (APAC heavy) + hosting platforms
-  // where every subdomain is a different owner. Not a full PSL — kept small on purpose.
-  const MULTI_SUFFIXES = new Set([
-    'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk',
-    'com.au', 'net.au', 'org.au', 'edu.au', 'gov.au',
-    'com.my', 'net.my', 'org.my', 'gov.my', 'edu.my',
-    'com.sg', 'net.sg', 'org.sg', 'edu.sg', 'gov.sg',
-    'co.id', 'or.id', 'go.id', 'ac.id', 'web.id', 'my.id',
-    'com.bd', 'net.bd', 'org.bd', 'gov.bd', 'edu.bd', 'ac.bd',
-    'co.th', 'or.th', 'go.th', 'ac.th', 'in.th',
-    'com.tw', 'org.tw', 'gov.tw', 'edu.tw', 'net.tw',
-    'com.hk', 'org.hk', 'gov.hk', 'edu.hk', 'net.hk',
-    'co.in', 'net.in', 'org.in', 'gov.in', 'ac.in', 'firm.in',
-    'co.jp', 'ne.jp', 'or.jp', 'ac.jp', 'go.jp',
-    'co.kr', 'or.kr', 'go.kr', 'com.cn', 'net.cn', 'org.cn', 'gov.cn',
-    'com.ph', 'net.ph', 'gov.ph', 'com.vn', 'net.vn', 'gov.vn',
-    'co.nz', 'org.nz', 'com.pk', 'net.pk', 'gov.pk', 'com.lk', 'com.np',
-    'com.br', 'co.za', 'com.mx', 'com.tr', 'com.ng', 'com.sa', 'com.eg', 'co.ae'
-  ]);
+  // Google's own country sites, from https://www.google.com/supported_domains
+  const GOOGLE_COUNTRY = ('ad ae com.af com.ag al am co.ao com.ar as at com.au az ba com.bd be bf bg com.bh bi bj com.bn com.bo com.br bs bt co.bw by com.bz ca cd cf cg ch ci co.ck cl cm cn com.co co.cr com.cu cv com.cy cz de dj dk dm com.do dz com.ec ee com.eg es com.et fi com.fj fm fr ga ge gg com.gh com.gi gl gm gr com.gt gy com.hk hn hr ht hu co.id ie co.il im co.in iq is it je com.jm jo co.jp co.ke com.kh ki kg co.kr com.kw kz la com.lb li lk co.ls lt lu lv com.ly co.ma md me mg mk ml com.mm mn com.mt mu mv mw com.mx com.my co.mz com.na com.ng com.ni ne nl no com.np nr nu co.nz com.om com.pa com.pe com.pg com.ph com.pk pl pn com.pr ps pt com.py com.qa ro ru rw com.sa com.sb sc se com.sg sh si sk com.sl sn so sm sr st com.sv td tg co.th com.tj tl tm tn to com.tr tt com.tw co.tz com.ua co.ug co.uk com.uy co.uz com.vc co.ve co.vi com.vn vu ws rs co.za co.zm co.zw cat').split(' ').map((s) => 'google.' + s);
 
   // Free / instant hosting — every subdomain is someone else. Abused heavily for phishing.
   const FREE_HOSTING = [
@@ -58,6 +41,7 @@
 
   // Brands commonly impersonated. `labels` = registrable labels used for lookalike checks,
   // `keywords` = tokens that signal the brand in a hostname / page, `domains` = legit domains.
+  // A one-label domain is a top-level domain the brand itself runs, such as .google.
   const BRANDS = [
     { name: 'Microsoft', labels: ['microsoft', 'microsoftonline', 'office365', 'outlook', 'onedrive', 'sharepoint'],
       keywords: ['microsoft', 'microsoftonline', 'office365', 'microsoft365', 'outlook', 'onedrive', 'sharepoint', 'hotmail', 'msonline', 'azuread', 'entra'],
@@ -65,20 +49,22 @@
       domains: ['microsoft.com', 'microsoftonline.com', 'live.com', 'office.com', 'office365.com', 'outlook.com', 'sharepoint.com',
         'onedrive.com', 'onedrive.live.com', 'microsoft365.com', 'cloud.microsoft', 'azure.com', 'windows.net', 'msauth.net', 'msftauth.net',
         'aka.ms', 'bing.com', 'skype.com', 'msn.com', 'xbox.com', 'hotmail.com', 'onenote.com', 'msidentity.com', 'microsoftonline-p.com',
-        'sharepointonline.com', 'office.net', 'microsoft.net', 'windowsazure.com', 'azureedge.net', 'live.net', 'msecnd.net', 'gfx.ms'] },
+        'sharepointonline.com', 'office.net', 'microsoft.net', 'windowsazure.com', 'azureedge.net', 'live.net', 'msecnd.net', 'gfx.ms',
+        'microsoft', 'azure', 'bing', 'office', 'windows', 'xbox', 'hotmail'] },
     { name: 'Google', labels: ['google', 'gmail', 'youtube'],
       keywords: ['google', 'gmail', 'gdrive', 'googledrive', 'googledocs'],
       pageTerms: ['google', 'gmail', 'google drive', 'google docs'],
       domains: ['google.com', 'gmail.com', 'youtube.com', 'googleusercontent.com', 'gstatic.com', 'googleapis.com', 'google.com.my',
-        'google.com.sg', 'google.co.id', 'google.com.bd', 'google.co.th', 'google.com.tw', 'google.com.hk', 'google.co.in', 'withgoogle.com', 'goo.gl', 'g.co', 'youtu.be', 'google.co.uk'] },
+        'withgoogle.com', 'goo.gl', 'g.co', 'youtu.be', 'google', 'youtube', 'gmail'].concat(GOOGLE_COUNTRY) },
     { name: 'Apple', labels: ['apple', 'icloud', 'appleid'],
       keywords: ['apple', 'icloud', 'appleid', 'itunes'],
       pageTerms: ['apple id', 'icloud', 'apple account'],
-      domains: ['apple.com', 'icloud.com', 'me.com', 'mzstatic.com', 'apple.news'] },
+      domains: ['apple.com', 'icloud.com', 'me.com', 'mzstatic.com', 'apple.news', 'apple', 'apple.com.cn'] },
     { name: 'PayPal', labels: ['paypal'], keywords: ['paypal'], pageTerms: ['paypal'],
       domains: ['paypal.com', 'paypalobjects.com', 'paypal.me'] },
     { name: 'Amazon', labels: ['amazon', 'aws'], keywords: ['amazon', 'awsconsole'], pageTerms: ['amazon', 'aws management console'],
-      domains: ['amazon.com', 'amazon.co.uk', 'amazon.sg', 'amazon.in', 'amazon.co.jp', 'amazon.com.au', 'aws.amazon.com', 'amazonaws.com', 'awsstatic.com', 'media-amazon.com'] },
+      domains: ['amazon.com', 'amazon.co.uk', 'amazon.sg', 'amazon.in', 'amazon.co.jp', 'amazon.com.au', 'aws.amazon.com', 'amazonaws.com', 'awsstatic.com', 'media-amazon.com', 'amazon', 'aws',
+        'amazon.com.mx', 'amazon.com.br', 'amazon.com.be', 'amazon.com.tr', 'amazon.co.za'] },
     { name: 'DocuSign', labels: ['docusign'], keywords: ['docusign'], pageTerms: ['docusign'],
       domains: ['docusign.com', 'docusign.net'] },
     { name: 'Dropbox', labels: ['dropbox'], keywords: ['dropbox'], pageTerms: ['dropbox'],
@@ -86,13 +72,13 @@
     { name: 'Adobe', labels: ['adobe'], keywords: ['adobe', 'adobesign', 'acrobat'], pageTerms: ['adobe', 'adobe sign', 'adobe acrobat'],
       domains: ['adobe.com', 'adobesign.com', 'adobelogin.com', 'acrobat.com', 'echosign.com', 'adobe.io'] },
     { name: 'DHL', labels: ['dhl'], keywords: ['dhl'], pageTerms: ['dhl express'],
-      domains: ['dhl.com', 'dhl.de', 'dhl.com.my', 'dhl.com.sg', 'dhl.co.id'] },
-    { name: 'FedEx', labels: ['fedex'], keywords: ['fedex'], pageTerms: ['fedex'], domains: ['fedex.com'] },
+      domains: ['dhl.com', 'dhl.de', 'dhl.com.my', 'dhl.com.sg', 'dhl.co.id', 'dhl'] },
+    { name: 'FedEx', labels: ['fedex'], keywords: ['fedex'], pageTerms: ['fedex'], domains: ['fedex.com', 'fedex'] },
     { name: 'LinkedIn', labels: ['linkedin'], keywords: ['linkedin'], pageTerms: ['linkedin'], domains: ['linkedin.com', 'licdn.com', 'lnkd.in'] },
     { name: 'Facebook', labels: ['facebook', 'meta', 'instagram', 'whatsapp'], keywords: ['facebook', 'instagram', 'whatsapp', 'metabusiness'],
       pageTerms: ['facebook', 'instagram', 'whatsapp', 'meta business'],
       domains: ['facebook.com', 'fb.com', 'meta.com', 'instagram.com', 'whatsapp.com', 'whatsapp.net', 'fbcdn.net', 'messenger.com', 'cdninstagram.com'] },
-    { name: 'Netflix', labels: ['netflix'], keywords: ['netflix'], pageTerms: ['netflix'], domains: ['netflix.com', 'nflxext.com'] },
+    { name: 'Netflix', labels: ['netflix'], keywords: ['netflix'], pageTerms: ['netflix'], domains: ['netflix.com', 'nflxext.com', 'netflix'] },
     { name: 'Okta', labels: ['okta'], keywords: ['okta'], pageTerms: ['okta'], domains: ['okta.com', 'oktacdn.com', 'okta-emea.com', 'oktapreview.com'] },
     { name: 'Zoom', labels: ['zoom'], keywords: ['zoomus'], pageTerms: ['zoom meeting'], domains: ['zoom.us', 'zoom.com', 'zoomgov.com'] },
     { name: 'Wise', labels: ['wise', 'transferwise'], keywords: ['transferwise'], pageTerms: ['wise account'], domains: ['wise.com', 'transferwise.com'] },
@@ -230,6 +216,22 @@
     return h === '::1' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h);
   }
 
+  let suffixRules = null;
+  function publicSuffixLength(parts) {
+    if (!suffixRules) {
+      let list = root.VSPublicSuffixes;
+      if (!list && typeof require === 'function') list = require('./public-suffixes.js');
+      suffixRules = new Set(String(list || '').split(' '));
+    }
+    const names = decodeHost(parts.join('.')).split('.');
+    for (let i = 0; i < names.length; i++) {
+      const name = names.slice(i).join('.');
+      if (suffixRules.has('!' + name)) return names.length - i - 1;
+      if (suffixRules.has(name) || suffixRules.has('*.' + names.slice(i + 1).join('.'))) return names.length - i;
+    }
+    return 1;
+  }
+
   function registrableDomain(host) {
     host = (host || '').toLowerCase().replace(/\.$/, '');
     if (!host || isIp(host)) return host;
@@ -243,9 +245,8 @@
         return rest[rest.length - 1] + '.' + h;
       }
     }
-    const last2 = parts.slice(-2).join('.');
-    if (MULTI_SUFFIXES.has(last2)) return parts.slice(-3).join('.');
-    return last2;
+    const n = publicSuffixLength(parts);
+    return n >= parts.length ? host : parts.slice(-(n + 1)).join('.');
   }
 
   function hostMatches(host, domain) {
@@ -432,7 +433,10 @@
     // A real brand domain used as a prefix: login.microsoftonline.com.verify-account.top
     const embedded = brands.find((b) => b.domains.some((d) => d.includes('.') &&
       (host.startsWith(d + '.') || host.includes('.' + d + '.') || host.includes(d.replace(/\./g, '-') + '.'))));
-    if (embedded) { add(30, `Starts with a real ${embedded.name} address to look genuine`); res.brand = res.brand || embedded.name; }
+    if (embedded) {
+      add(30, `Starts with a real ${embedded.name} address to look genuine`); res.brand = res.brand || embedded.name;
+      if (embedded.labels.includes(decodedRegLabel)) add(10, `${embedded.name} is not known to use this country domain`);
+    }
 
     if (RISKY_TLDS.has(tld)) add(15, `High-abuse top-level domain ".${tld}"`);
     if (fh) add(15, `Hosted on free/instant hosting (${fh})`);

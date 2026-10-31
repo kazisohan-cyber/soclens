@@ -2,6 +2,18 @@
 
 All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] - 2026-10-31
+
+### Fixed
+- **Real Google country sites are no longer blocked or warned about.** Sites such as `google.com.ar` and `google.com.ua` were replaced by the block page, and `google.co.il` and sites on `.google`, such as `gemini.google`, showed a warning. Domain names are now read with the Public Suffix List, and Google's published list of country domains counts as genuine.
+- **Top-level domains run by a brand count as genuine:** `.google`, `.microsoft`, `.apple`, `.amazon` and similar.
+
+### Changed
+- **A brand name on a country domain it is not known to use, such as `paypal.com.ar`, now gets a warning.** Some of these were blocked before. A real login form there can still be blocked by the page check.
+
+### Added
+- `tests/benchmark.mjs` measures the address check against phishing and top-site lists, without opening any site.
+
 ## [0.8.0] - 2026-10-30
 
 ### Changed

@@ -14,6 +14,7 @@
 <h1>IOC Triage analyzer tests</h1>
 <div id="summary"></div>
 <pre id="out"></pre>
+<script src="../extension/lib/public-suffixes.js"></script>
 <script src="../extension/lib/analyzer.js"></script>
 <script>
 const A = window.VSAnalyzer;
@@ -93,6 +94,20 @@ check('unwrap safelinks', A.unwrapUrl('https://nam02.safelinks.protection.outloo
 check('unwrap proofpoint v3', A.unwrapUrl('https://urldefense.com/v3/__https://evil.xyz/c__;!!abc$') === 'https://evil.xyz/c');
 check('registrable co.uk', A.registrableDomain('a.b.bbc.co.uk') === 'bbc.co.uk');
 check('registrable hosting', A.registrableDomain('x.y.pages.dev') === 'y.pages.dev');
+check('registrable com.ar', A.registrableDomain('www.google.com.ar') === 'google.com.ar');
+check('registrable co.il', A.registrableDomain('a.b.example.co.il') === 'example.co.il');
+check('registrable is not fooled by a fake suffix', A.registrableDomain('google.com.evil.top') === 'evil.top');
+check('brand on a country domain it is not known to use gets a warning', A.analyzeUrl('https://paypal.com.ar/').level === 'warn');
+check('registrable wildcard rule', A.registrableDomain('a.b.c.ck') === 'b.c.ck');
+check('registrable exception rule', A.registrableDomain('a.www.ck') === 'www.ck');
+for (const u of ['https://www.google.com.ar/', 'https://google.com.ua/search?q=x', 'https://www.google.co.il/', 'https://www.google.com.pe/', 'https://gemini.google/', 'https://blog.google/', 'https://dns.google/', 'https://static.microsoft/', 'https://safety.google/']) {
+  const v = A.analyzeUrl(u);
+  check('genuine brand site is safe: ' + u, v.level === 'safe' && v.allow === true);
+}
+for (const u of ['https://google.com.evil.top/', 'https://login.microsoftonline.com.evil.top/', 'https://google-com.ar/', 'https://google.com.tk/', 'https://www.google.evil.com.ar/', 'https://gemini-google.com/', 'https://googll.store/']) {
+  const v = A.analyzeUrl(u);
+  check('fake brand site is still flagged: ' + u, !v.allow && v.level !== 'safe');
+}
 check('punycode decode', A.decodeHost('xn--pple-43d.com') === 'аpple.com');
 check('defang', A.defang('https://evil.xyz/a') === 'hxxps://evil[.]xyz/a');
 
