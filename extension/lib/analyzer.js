@@ -449,13 +449,17 @@
     if (host.length > 55) add(10, 'Very long hostname');
     if ((host.match(/-/g) || []).length >= 4) add(10, 'Many hyphens in hostname');
     if (/\d{5,}/.test(regLabel)) add(5, 'Random-looking number in domain');
+    // Benchmark 2026-10-31: common on phishing, rare on popular hosted sites. CDN and cloud app names are machine-made by default.
+    if (fh && !/^(cloudfront\.net|azurewebsites\.net|azurestaticapps\.net|web\.core\.windows\.net|s3\.amazonaws\.com|amplifyapp\.com)$/.test(fh) &&
+      (/\d{5,}/.test(regLabel) || host.length > 55)) add(20, 'Machine-made looking name on free hosting');
     if (url.port && !['80', '443'].includes(url.port)) add(10, `Non-standard port :${url.port}`);
     if (href.length > 250) add(5, 'Very long URL');
     if (/(login|signin|sign-in|verify|account|secure|update|wallet|password|banking|webscr|auth)/i.test(url.pathname + url.search) && (fh || RISKY_TLDS.has(tld) || isIp(host))) {
       add(15, 'Login / verification path on a low-trust host');
     }
     if (/[?&#](email|e|user|login|u)=[^&]*(@|%40)/i.test(url.search + url.hash)) add(10, 'Your email address is pre-filled in the link (targeted lure)');
-    if (url.protocol === 'http:' && res.score > 0) add(5, 'No HTTPS');
+    // Free hosts serve HTTPS by default, and a public site on a bare IP rarely has a reason to skip it.
+    if (url.protocol === 'http:' && res.score > 0) add(fh ? 25 : isIp(host) ? 10 : 5, 'No HTTPS');
 
     return finish(res, cfg);
   }
@@ -493,7 +497,8 @@
         add(70, `Login page imitates ${strongClaim.name} (logo / title) on a non-${strongClaim.name} site`);
         res.brand = res.brand || strongClaim.name;
       } else if (weakClaim && otherRisk) {
-        add(30, `Asks for a password while mentioning ${weakClaim.name}`);
+        // A warning plus a brand named only in body text is not enough for a hard block.
+        add(res.score >= 40 ? 25 : 30, `Asks for a password while mentioning ${weakClaim.name}`);
         res.brand = res.brand || weakClaim.name;
       } else if (res.score >= 15) {
         add(15, 'Asks for a password on a low-trust site');

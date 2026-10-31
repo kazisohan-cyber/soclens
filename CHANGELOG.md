@@ -10,6 +10,7 @@ All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow 
 
 ### Changed
 - **A brand name on a country domain it is not known to use, such as `paypal.com.ar`, now gets a warning.** Some of these were blocked before. A real login form there can still be blocked by the page check.
+- **More warnings on free hosting and bare IP addresses:** plain HTTP on free hosting or a public IP address, and a machine-made looking name on free hosting. A real site with such a name can now show a warning.
 
 ### Added
 - `tests/benchmark.mjs` measures the address check against phishing and top-site lists, without opening any site.

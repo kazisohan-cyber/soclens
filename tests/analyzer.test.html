@@ -98,6 +98,19 @@ check('registrable com.ar', A.registrableDomain('www.google.com.ar') === 'google
 check('registrable co.il', A.registrableDomain('a.b.example.co.il') === 'example.co.il');
 check('registrable is not fooled by a fake suffix', A.registrableDomain('google.com.evil.top') === 'evil.top');
 check('brand on a country domain it is not known to use gets a warning', A.analyzeUrl('https://paypal.com.ar/').level === 'warn');
+check('real app login on free hosting does not warn from the address alone', A.analyzeUrl('https://acme.vercel.app/login').level === 'caution');
+check('machine-made CDN name does not warn', A.analyzeUrl('https://d2rz2f1z54295q.cloudfront.net/').level === 'caution');
+check('home page on free hosting stays quiet', A.analyzeUrl('https://acme.vercel.app/').level === 'caution');
+check('login path on a risky TLD alone does not warn', A.analyzeUrl('https://acme.shop/login').level === 'caution');
+check('plain HTTP on free hosting warns', A.analyzeUrl('http://acme.pages.dev/').level === 'warn');
+check('plain HTTP on a public IP warns', A.analyzeUrl('http://203.0.113.9/').level === 'warn');
+check('HTTPS on a public IP does not warn', A.analyzeUrl('https://203.0.113.9/').level === 'caution');
+check('plain HTTP on an ordinary site is not flagged', A.analyzeUrl('http://example.org/').level === 'safe');
+check('private address is not flagged', A.analyzeUrl('http://192.168.1.1/login').level === 'safe');
+check('number in a free hosting name warns', A.analyzeUrl('https://acme58213.netlify.app/').level === 'warn');
+const hostedLogin = A.analyzeUrl('https://acme58213.vercel.app/');
+check('brand mention on a hosted login page stays a warning', A.analyzePage(hostedLogin, { hasPassword: true, brandStrong: ['Acme'], bodyText: 'Export your files to Dropbox', formActions: [] }).level === 'warn');
+check('brand logo on a hosted login page is blocked', A.analyzePage(hostedLogin, { hasPassword: true, brandStrong: ['Microsoft'], bodyText: '', formActions: [] }).level === 'block');
 check('registrable wildcard rule', A.registrableDomain('a.b.c.ck') === 'b.c.ck');
 check('registrable exception rule', A.registrableDomain('a.www.ck') === 'www.ck');
 for (const u of ['https://www.google.com.ar/', 'https://google.com.ua/search?q=x', 'https://www.google.co.il/', 'https://www.google.com.pe/', 'https://gemini.google/', 'https://blog.google/', 'https://dns.google/', 'https://static.microsoft/', 'https://safety.google/']) {
