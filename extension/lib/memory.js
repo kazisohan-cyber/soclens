@@ -107,7 +107,7 @@
 
   function fmtDate(ts) { return new Date(ts).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }); }
 
-  /** "Client A: Fortinet VPN egress (by Arefin · INC-4711 · 12 Oct 2026)" */
+  /** "Client A: Fortinet VPN egress (by Sam · INC-4711 · 12 Oct 2026)" */
   function describe(m) {
     const who = [m.by ? 'by ' + m.by : '', m.ticket || '', m.updated ? fmtDate(m.updated) : ''].filter(Boolean).join(' · ');
     const what = m.kind && m.kind !== 'ioc' ? `${KIND_LABEL[m.kind]} ${m.ioc}: ` : '';

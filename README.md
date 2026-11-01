@@ -154,7 +154,7 @@ Event types: `url_blocked`, `page_blocked`, `page_warned`, `credential_reuse_blo
 
 ## Publishing
 
-- **Chrome Web Store**: one-time developer fee; publish **Unlisted** for pilots. Needs a privacy policy URL; `<all_urls>` triggers in-depth review.
+- **Chrome Web Store**: one-time developer fee; publish **Unlisted** for pilots. Needs a privacy policy URL; access to all http and https sites triggers in-depth review.
 - **Edge Add-ons**: free, same package.
 - Zip the *contents* of `extension/` (manifest at the zip root).
 

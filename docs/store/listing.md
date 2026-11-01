@@ -24,35 +24,35 @@ FOR SOC ANALYSTS
 • Investigate: select text on any page, right-click and choose IOC Triage: Investigate, or paste a whole alert into the side panel. Defanged input is fine.
 • Verdicts you can check: every finding names its source, and each result says what to do next.
 • Close or escalate: a suggestion with the reasons. It never suggests closing when a lookup failed or something is still unknown. The decision stays yours.
-• Ticket notes: one click copies a formatted note, Markdown, or an escalation hand-over for L2.
-• Hunt queries: copy a ready query for SentinelOne, Microsoft Defender, Microsoft Sentinel, Splunk or Securonix.
+• Ticket notes: one click copies formatted text, Markdown, or an escalation hand-over for L2.
+• Hunt queries: copy a ready query for common EDR and SIEM platforms.
 • Reported phishing: open an .eml file on your device for headers, real link destinations and attachment hashes, then copy a reply for the reporter. The email is never displayed.
 • Decision memory and shift handover: see what you decided last time for an indicator, and copy a shift report built from your decisions.
-• MITRE ATT&CK and block lists: possible techniques on your notes, and flagged indicators exported for firewalls, EDR or STIX 2.1.
-• Client memory: record what is normal for each client. Notes show who added them and they expire, so old knowledge is never trusted silently. Share them with your team as an encrypted file.
+• MITRE ATT&CK and block lists: possible techniques for each case, and flagged indicators exported for firewalls, EDR or STIX 2.1.
+• Client memory: record what is normal for each client. Notes show who added them and they expire, so old knowledge is not trusted silently. Share them with your team as an encrypted file.
 • Safe detonation: scan a link with urlscan.io, using your own key, without opening it in your browser.
-• Highlighting: colours indicators on the analyst sites you choose. No lookup runs until you click.
+• Highlighting: colours IPs, domains and hashes on the analyst sites you choose. No lookup runs until you click.
 • Your own AI (optional, off by default): connect your AI provider or a local model for a summary, next checks or a client email draft.
 
 PROTECTION WHILE YOU BROWSE (turned on only after you agree)
-• Blocks lookalike and impersonation sites before they load, and warns on suspicious ones.
+• Blocks lookalike and impersonation pages before they load, and warns on suspicious ones.
 • Detects fake login pages that copy a known brand.
 • Scans email in Gmail and Outlook on the web, shows a warning banner and disables dangerous links.
 • Credential guard: if your work password is typed on a site that is not part of your organisation, the field is cleared before it is sent.
 
-WHAT IOC TRIAGE READS AND SENDS
+WHAT IS READ AND SENT
 On your device only:
 • The address of each page you open, and the content of pages and webmail messages, are analysed locally to detect phishing.
 • Your work password is stored only as a salted hash, learned when you sign in on a corporate login page, and is never sent.
-• Client notes, decision history, API keys, ticket notes and the activity log stay in this browser. Reported .eml files are read locally and not kept.
+• Your saved records, decision history, API keys and the activity log stay in this browser. Reported .eml files are read locally and not kept.
 
 Sent only in these cases:
-• When you investigate, only that indicator goes directly from your browser to the intel services, such as GreyNoise, Shodan InternetDB, ipinfo, rdap.org, Cloudflare DNS, CISA KEV, FIRST EPSS and NVD, plus VirusTotal, AbuseIPDB, abuse.ch and urlscan.io if you add your own keys.
+• When you investigate, only that indicator goes directly from your browser to public threat-intelligence services, and to any services you add your own keys for. The privacy policy names each one.
 • For an already suspicious site, its domain name may go to rdap.org to check the domain's age. You can turn this off in Settings.
 • If you connect your own AI, computed evidence goes to the provider you chose, only when you click, and you can read it first. Your pasted alert is never sent. Client data is masked by default.
-• If you or your admin connect a company IOC Triage console, security events go to your organisation's own server. This is off unless configured.
+• If you or your admin connect a company console, security events go to your organisation's own server. This is off unless configured.
 
-No IOC Triage server is built in, and no account is needed. There are no analytics, no tracking, no ads and no sale of data.
+No server is built in, and no account is needed. There are no analytics, no tracking, no ads and no sale of data.
 
 Privacy policy: https://github.com/kazisohan-cyber/soclens/blob/main/PRIVACY.md
 Source code: https://github.com/kazisohan-cyber/soclens

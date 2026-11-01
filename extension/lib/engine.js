@@ -239,7 +239,7 @@
     for (const m of report.memory || []) res.facts.push(['Client note', `${noteText(m)} (${m.expired ? 'expired' : m.verdict})`]);
   }
 
-  // Memory entries from lib/memory.js carry _desc ("Client A: Network AS62044: Zscaler (by Arefin · INC-1)").
+  // Memory entries from lib/memory.js carry _desc ("Client A: Network AS62044: Zscaler (by Sam · INC-1)").
   function noteText(m) { return m._desc || `${m.client ? m.client + ': ' : ''}${m.note || m.verdict}`; }
 
   function assessCve(report, res) {

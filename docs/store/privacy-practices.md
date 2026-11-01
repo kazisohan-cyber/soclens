@@ -58,7 +58,7 @@ Copies what the user asks for when they click a Copy button: ticket notes (forma
 Adds one session rule that removes the Origin header from the extension's own background requests to api.greynoise.io, because that API refuses requests carrying a browser Origin header. The rule is limited to that one domain and to tabId -1, so it never touches web pages or any other request. No other rules exist, and nothing is blocked or redirected through this API.
 ```
 
-**Host permission: `<all_urls>`**
+**Host permission: `http://*/*` and `https://*/*`**
 
 ```text
 Phishing can appear on any site, so protection cannot be limited to a list of hosts. Content scripts run on every http and https page to detect fake logins and stop a work password being typed on the wrong site, and this must happen before the user submits, so asking for access per site would come too late. This analysis runs on the device.

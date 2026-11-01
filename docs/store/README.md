@@ -1,6 +1,6 @@
 # IOC Triage: Chrome Web Store submission pack
 
-**Status:** IOC Triage 0.8.0 was submitted on 2026-10-30 and is pending review. Store item ID: `dncgneacahomieionjkaofmfnojlkfmc`. It was submitted with `<all_urls>`.
+**Status:** IOC Triage 0.8.0 was submitted on 2026-10-30 and rejected for keyword spam in the description. Resubmit with 0.8.2 and the description in `listing.md`. Store item ID: `dncgneacahomieionjkaofmfnojlkfmc`.
 
 | File | Use it for |
 |---|---|
@@ -12,13 +12,9 @@
 
 ## Before the next submission
 
-The welcome page, consent step and `PRIVACY.md` gaps found earlier are fixed in 0.8.0. These remain.
+The welcome page, consent step and `PRIVACY.md` gaps found earlier are fixed in 0.8.0. Host access was narrowed to `http://*/*` and `https://*/*` in 0.8.2. It still counts as broad access, so expect the same in-depth review.
 
-### 1. Narrow `<all_urls>` (recommended for the next version)
-
-Google requires the narrowest permission that works. `<all_urls>` also covers `file://`, but content scripts run only on http and https, and I found no `file:` handling in `background.js` or `lib/`. Replacing it with `http://*/*` and `https://*/*` should lose nothing. It will still count as broad access and is likely to get the same in-depth review. Retest after the change. If you make it, change the permission name in the field heading and in the first paste block; the justification still applies.
-
-### 2. Risks to watch
+### Risks to watch
 
 - **Single purpose.** Phishing protection plus an analyst panel could look like two products to a reviewer. The statement frames both as one focus area, which Google's FAQ allows. If it is rejected as multi-purpose (`Red Magnesium`), the fix is two separate extensions.
 - **API keys at rest.** Google's FAQ (question 9) says data at rest should use strong encryption such as AES. API keys sit unencrypted in `chrome.storage.local`, which only this extension can read. The password is a salted PBKDF2 hash, not stored in clear text. Reviewers may never raise this, but I can't rule it out.
@@ -27,14 +23,14 @@ Google requires the narrowest permission that works. `<all_urls>` also covers `f
 
 ## Submission steps (the same for each new version)
 
-1. Decide on item 1 and, if you change the code, release the new version before packaging.
+1. Commit the code and raise the version in `extension/manifest.json`.
 2. In the [developer dashboard](https://chrome.google.com/webstore/devconsole), register: accept the developer agreement and pay the one-time fee. The docs no longer state the amount, and it has historically been US$5, so the dashboard shows the real figure. Google suggests a dedicated email address, because it can't be changed later.
 3. Turn on 2-Step Verification on that Google account, which publishing requires.
 4. On the Account page, set the publisher name and verify the contact email. The publisher name appears publicly under "Offered by". The manifest says `OpsVantage`.
-5. Build the package from the repo root in PowerShell 7:
+5. Build the package from the committed code, in the repo root:
 
-   ```powershell
-   Compress-Archive -Path extension\* -DestinationPath ioc-triage-extension-v0.8.0.zip -Force
+   ```bash
+   git archive --format=zip -o ioc-triage-extension-v0.8.2.zip HEAD:extension
    ```
 
 6. Click **Add new item** and upload the zip. `*.zip` is already ignored by git.
@@ -53,7 +49,7 @@ GitHub Pages serves `docs/`, so this pack is public under `/soclens/store/`. It 
 | Name up to 75 characters, description up to 132 | 61 and 116 | [name](https://developer.chrome.com/docs/extensions/reference/manifest/name), [description](https://developer.chrome.com/docs/extensions/reference/manifest/description) |
 | Store icon 128x128 PNG | `extension/icons/icon128.png` | [Images](https://developer.chrome.com/docs/webstore/images) |
 | 1 to 5 screenshots, 1280x800, square corners, full bleed | 5 at 1280x800 | [Listing](https://developer.chrome.com/docs/webstore/cws-dashboard-listing) |
-| No keyword spam, such as more than 5 unnatural repeats or bare brand lists | Checked by count | [Listing requirements](https://developer.chrome.com/docs/webstore/program-policies/listing-requirements) |
+| No keyword spam, such as more than 5 unnatural repeats or bare brand lists | 0.8.0 was rejected on 2026-11-01 (`Yellow Argon`) for the list of intel services in the description. Names now live in `PRIVACY.md`, so keep vendor lists out of the description | [Listing requirements](https://developer.chrome.com/docs/webstore/program-policies/listing-requirements) |
 | Single purpose, permissions, remote code, data use, policy URL | Answered | [Privacy fields](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy) |
 | All logic inside the package | No `eval`, no remote scripts | [MV3 requirements](https://developer.chrome.com/docs/webstore/program-policies/mv3-requirements) |
 | Local-only handling still disclosed; consent inside the product | Disclosed in the listing; consent on the welcome page | [User Data FAQ](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq) |

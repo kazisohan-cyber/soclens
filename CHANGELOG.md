@@ -2,6 +2,14 @@
 
 All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.8.2] - 2026-11-01
+
+### Changed
+- **Narrower site access:** the extension now asks for `http` and `https` sites only, not all URLs. It never used the rest.
+
+### Removed
+- `lib/intel.js`, which nothing loaded.
+
 ## [0.8.1] - 2026-10-31
 
 ### Fixed
