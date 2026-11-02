@@ -39,11 +39,17 @@
     const from = (body.match(/\bfrom\s+([^\s(;]+)/i) || [])[1] || '';
     const by = (body.match(/\bby\s+([^\s(;]+)/i) || [])[1] || '';
     const withP = (body.match(/\bwith\s+([^\s(;]+)/i) || [])[1] || '';
+    // "from HELO (rdns [IP])": the bracket comment is what the receiving server saw on the TCP connection,
+    // so its IP wins over the HELO name, which the sender chooses (often a private or forged IP literal).
     const ips = [];
     const re = /\[?((?:\d{1,3}\.){3}\d{1,3})\]?|\[(?:IPv6:)?([0-9a-f:]{3,})\]/gi;
     const fromPart = body.split(/\bby\s/i)[0];
-    let m;
-    while ((m = re.exec(fromPart))) ips.push((m[1] || m[2]).toLowerCase());
+    const seen = (fromPart.match(/\([^)]*\)/g) || []).join(' ');
+    for (const part of [seen, fromPart]) {
+      let m;
+      re.lastIndex = 0;
+      while ((m = re.exec(part))) ips.push((m[1] || m[2]).toLowerCase());
+    }
     return { from, by, with: withP, ip: ips[0] || '', date: isNaN(date) ? null : date, raw: v };
   }
 

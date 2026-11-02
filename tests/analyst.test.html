@@ -185,6 +185,20 @@ hr = HD.analyze(goodHdr);
 check('clean headers -> benign', hr.verdict === 'benign', `${hr.verdict} ${hr.score} ${hr.reasons.map((r) => r.t).join('; ')}`);
 check('empty input handled', HD.analyze('').ok === false);
 
+// The sender picks the HELO name; the IP in the parentheses is what the receiving server actually saw.
+hr = HD.analyze(`Received: from [192.168.1.23] (unknown [45.88.97.11]) by mail.evil-sender.top (Postfix) with ESMTPA; Mon, 19 Oct 2026 10:00:00 +0000
+From: a@evil-sender.top`);
+check('private HELO literal: origin = connecting IP', hr.origin === '45.88.97.11' && hr.hops[0].ip === '45.88.97.11', `${hr.origin} ${hr.hops[0].ip}`);
+hr = HD.analyze(`Received: from [8.8.8.8] (host-91-215-85-142.example.net [91.215.85.142]) by mx.clienta.com with ESMTP; Mon, 19 Oct 2026 10:00:00 +0000
+From: a@evil-sender.top`);
+check('forged public HELO literal: origin = connecting IP', hr.origin === '91.215.85.142', hr.origin);
+hr = HD.analyze(`Received: from mail.evil-sender.top (91.215.85.142) by mx.clienta.com with ESMTP; Mon, 19 Oct 2026 10:00:00 +0000
+From: a@evil-sender.top`);
+check('bare IP in parentheses (Exchange style)', hr.origin === '91.215.85.142', hr.origin);
+hr = HD.analyze(`Received: from [45.88.97.11] by mail.evil-sender.top with ESMTPA; Mon, 19 Oct 2026 10:00:00 +0000
+From: a@evil-sender.top`);
+check('no parentheses: IP literal still used', hr.origin === '45.88.97.11', hr.origin);
+
 section('Client memory v2');
 {
   const M = VSMemory, now = Date.parse('2026-10-20T12:00:00Z'), D = 864e5;

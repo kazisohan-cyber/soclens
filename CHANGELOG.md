@@ -2,6 +2,11 @@
 
 All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Email header analysis now finds the real sending IP when the sender names itself with an IP address.** In a hop like `from [192.168.1.23] (unknown [45.88.97.11])`, the originating IP was missed because the private address the sender typed came first. The address in the parentheses, which the receiving server recorded, now wins. A forged public address in that position no longer becomes the originating IP either.
+
 ## [0.8.2] - 2026-11-01
 
 ### Changed
