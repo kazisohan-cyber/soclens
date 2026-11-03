@@ -21,6 +21,17 @@ Free, open source, privacy-first. A Chrome / Edge extension (Manifest V3) by Ops
 3. On the welcome page, read what is handled and click **Agree and turn on** for browsing protection. The analyst panel works without it.
 4. Select any indicator on a page → right-click → **IOC Triage: Investigate**. Optional: add free VirusTotal / AbuseIPDB keys in the panel's setup card (2 minutes) for known-bad verdicts.
 
+## More free SOC tools
+
+Companion web tools from the same author, at **[tools.opsvantage.net](https://tools.opsvantage.net)**. They run in your browser and nothing is uploaded:
+
+- [IOC Extractor](https://tools.opsvantage.net/ioc-extractor/): pull and defang every IP, domain, URL, hash and CVE from a report or alert
+- [Email Header Analyzer](https://tools.opsvantage.net/email-headers/): SPF, DKIM, DMARC, delivery path and BEC red flags
+- [SPF, DKIM & DMARC Checker](https://tools.opsvantage.net/dmarc-checker/): can a domain be spoofed, and the exact records to fix it
+- [Windows Event Triage](https://tools.opsvantage.net/event-triage/): event ID lookup and brute force, Kerberoasting and DCSync detection in exported logs
+- [Microsoft 365 Posture Scanner](https://tools.opsvantage.net/m365-posture/): read-only tenant review of MFA, admins, Conditional Access and app consents
+- [SOC guides](https://tools.opsvantage.net/guides/): Event ID 4625, logon types, reading email headers, DMARC rollout and more
+
 ## Screenshots
 
 | | |
