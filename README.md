@@ -6,7 +6,7 @@
 
 Free, open source, privacy-first. A Chrome / Edge extension (Manifest V3) by OpsVantage. No account, no server: everything runs in your browser, and intel lookups send only the indicator. No frameworks, no build step, about 250 KB.
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Release](https://img.shields.io/github/v/release/kazisohan-cyber/soclens)](https://github.com/kazisohan-cyber/soclens/releases) [![Website](https://img.shields.io/badge/website-soclens-0f766e)](https://kazisohan-cyber.github.io/soclens/)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/dncgneacahomieionjkaofmfnojlkfmc?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/dncgneacahomieionjkaofmfnojlkfmc) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Release](https://img.shields.io/github/v/release/kazisohan-cyber/soclens)](https://github.com/kazisohan-cyber/soclens/releases) [![Website](https://img.shields.io/badge/website-soclens-0f766e)](https://kazisohan-cyber.github.io/soclens/)
 
 <p align="center">
   <img src="docs/screenshots/01-investigate.jpg" width="32%" alt="Investigate a whole alert: every indicator gets a verdict, with client context from memory">
@@ -16,10 +16,8 @@ Free, open source, privacy-first. A Chrome / Edge extension (Manifest V3) by Ops
 
 ## Install (1 minute)
 
-The Chrome Web Store listing is in review. Until it is live, install from the release:
-
-1. Download `ioc-triage-extension-v*.zip` from the [latest release](https://github.com/kazisohan-cyber/soclens/releases/latest) and unzip it.
-2. Open `chrome://extensions` (or `edge://extensions`) → turn on **Developer mode** → **Load unpacked** → pick the unzipped folder.
+1. **[Add IOC Triage from the Chrome Web Store](https://chromewebstore.google.com/detail/dncgneacahomieionjkaofmfnojlkfmc)**. On Microsoft Edge, allow extensions from other stores when asked.
+2. Managed browser or no store access? Download `ioc-triage-extension-v*.zip` from the [latest release](https://github.com/kazisohan-cyber/soclens/releases/latest), open `chrome://extensions` → turn on **Developer mode** → **Load unpacked** → pick the unzipped folder.
 3. On the welcome page, read what is handled and click **Agree and turn on** for browsing protection. The analyst panel works without it.
 4. Select any indicator on a page → right-click → **IOC Triage: Investigate**. Optional: add free VirusTotal / AbuseIPDB keys in the panel's setup card (2 minutes) for known-bad verdicts.
 
