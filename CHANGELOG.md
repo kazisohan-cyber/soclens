@@ -10,6 +10,7 @@ All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow 
 - **Settings ask for single sites when needed:** the AI provider when you test or save it, the company console when you save its address, and the analyst sites for highlighting when you save them.
 - Updating from 0.8.2 keeps the access you already granted, so protection stays on without a new prompt.
 - Turning protection off in Settings withdraws consent but leaves Chrome's site access alone. Removing "all sites" could also drop the threat-intel API hosts until the next restart.
+- **New store title and summary:** "IOC Triage – IP, Domain & Hash Lookup for SOC Analysts", with the main intel sources named in the summary.
 
 ### Fixed
 - **Email header analysis now finds the real sending IP when the sender names itself with an IP address.** In a hop like `from [192.168.1.23] (unknown [45.88.97.11])`, the originating IP was missed because the private address the sender typed came first. The address in the parentheses, which the receiving server recorded, now wins. A forged public address in that position no longer becomes the originating IP either.

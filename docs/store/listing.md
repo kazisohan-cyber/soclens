@@ -8,8 +8,8 @@ The store reads both from `extension/manifest.json`, so they are already set by 
 
 | Field | Value | Length | Limit |
 |---|---|---|---|
-| Title (`name`) | IOC Triage – IOC Lookup, Threat Intel & SOC Analyst Assistant | 61 | 75 |
-| Short description (`description`) | Instant verdicts for any IP, domain, URL, hash or CVE, ticket notes, email header analysis, and phishing protection. | 116 | 132 |
+| Title (`name`) | IOC Triage – IP, Domain & Hash Lookup for SOC Analysts | 54 | 75 |
+| Short description (`description`) | Right-click any IP, domain, URL, hash or CVE to check it in VirusTotal, AbuseIPDB, GreyNoise, Shodan and more. Free, open source. | 129 | 132 |
 
 To change either one, edit the manifest and upload a new package.
 
@@ -18,7 +18,7 @@ To change either one, edit the manifest and upload a new package.
 **Description**
 
 ```text
-IOC Triage is a free, open-source browser assistant for spotting and handling phishing and malicious internet indicators. Paste an alert and it checks every IP, domain, URL, file hash, email address and CVE, gives each one a verdict with its reasons, and copies a finished ticket note. It also warns you about fake sites and fake logins as you browse.
+IOC Triage is a free, open-source IOC lookup and phishing checker for SOC analysts. Right-click any IP address, domain, URL, file hash, email address or CVE, or paste a whole alert, and it checks VirusTotal, AbuseIPDB, GreyNoise, Shodan InternetDB, ipinfo, URLhaus, ThreatFox, MalwareBazaar, urlscan.io, CISA KEV, EPSS and NVD for you (VirusTotal, AbuseIPDB, abuse.ch and urlscan.io need your own free API key). Each indicator gets a verdict with its reasons, and one click copies a finished ticket note. It also warns you about fake sites and fake logins as you browse.
 
 FOR SOC ANALYSTS
 • Investigate: select text on any page, right-click and choose IOC Triage: Investigate, or paste a whole alert into the side panel. Defanged input is fine.
@@ -67,7 +67,7 @@ Source code: https://github.com/kazisohan-cyber/soclens
 | Global promo video | The YouTube link, after you record `demo-video-script.md` (optional) |
 | Small and marquee promo tiles | Leave empty (optional) |
 | Official URL | None, unless you verify a site in Search Console (optional) |
-| Homepage URL | `https://kazisohan-cyber.github.io/soclens/` |
+| Homepage URL | `https://tools.opsvantage.net/?utm_source=chrome-web-store&utm_medium=listing` (free tools hub; visits show in Web Analytics. The source code link stays in the description.) |
 | Support URL | `https://github.com/kazisohan-cyber/soclens/issues` |
 | Mature content | Off |
 

@@ -1,6 +1,6 @@
-# Store listing: search-term draft (not applied)
+# Store listing: search-term changes
 
-A proposal to help IOC Triage show up in Chrome Web Store search. Nothing here is live. The current text is in `listing.md`.
+Applied on 2026-11-04 for 0.8.3: the title and summary are in `extension/manifest.json`, and the description opening and Homepage URL are in `listing.md`. This file keeps the reasoning.
 
 ## Why change it
 
