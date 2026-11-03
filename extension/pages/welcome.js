@@ -29,14 +29,26 @@
   });
   $('openSettings').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
+  // Protection needs Chrome's optional access to every site and to navigation events. Only a click can ask
+  // for it, so an admin's policy still leaves this one click to the user.
+  const ACCESS = { permissions: ['webNavigation'], origins: ['http://*/*', 'https://*/*'] };
   async function showConsent() {
     const c = await VSConfig.get();
     const { dataConsent } = await chrome.storage.local.get('dataConsent');
     const admin = c._managed.length > 0;
-    $('consentCard').hidden = !!dataConsent || admin;
-    $('agreedCard').hidden = !dataConsent;
+    const permitted = await chrome.permissions.contains(ACCESS);
+    const on = (!!dataConsent || admin) && permitted;
+    $('consentCard').hidden = on;
+    $('agreedCard').hidden = !on;
   }
   $('agree').addEventListener('click', async () => {
+    // permissions.request must be the first await so it still runs inside the click.
+    const granted = await chrome.permissions.request(ACCESS).catch(() => false);
+    if (!granted) {
+      $('consentCard').hidden = true;
+      $('declinedNote').hidden = false;
+      return;
+    }
     await chrome.runtime.sendMessage({ type: 'setDataConsent', agree: true });
     showConsent();
   });

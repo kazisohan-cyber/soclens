@@ -2,7 +2,14 @@
 
 All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.8.3] - 2026-11-03
+
+### Changed
+- **Install asks for much less.** Access to every site is now optional. At install Chrome asks only for the threat-intel APIs that lookups use, so investigating indicators works with no site access at all. Browsing protection (page guard, webmail scanner, credential guard) asks for site access when you turn it on, on the welcome page. Its content scripts are registered only after that.
+- **Navigation events (`webNavigation`) are optional too,** and requested with browsing protection.
+- **Settings ask for single sites when needed:** the AI provider when you test or save it, the company console when you save its address, and the analyst sites for highlighting when you save them.
+- Updating from 0.8.2 keeps the access you already granted, so protection stays on without a new prompt.
+- Turning protection off in Settings withdraws consent but leaves Chrome's site access alone. Removing "all sites" could also drop the threat-intel API hosts until the next restart.
 
 ### Fixed
 - **Email header analysis now finds the real sending IP when the sender names itself with an IP address.** In a hop like `from [192.168.1.23] (unknown [45.88.97.11])`, the originating IP was missed because the private address the sender typed came first. The address in the parentheses, which the receiving server recorded, now wins. A forged public address in that position no longer becomes the originating IP either.

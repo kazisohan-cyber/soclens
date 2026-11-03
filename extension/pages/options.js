@@ -3,6 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const fields = [...document.querySelectorAll('[data-k]')];
   const CONNECTION_KEYS = ['apiEndpoint', 'apiKey', 'tenantId', 'userId'];
+  const PROTECTION_ACCESS = { permissions: ['webNavigation'], origins: ['http://*/*', 'https://*/*'] };
 
   async function load() {
     const cfg = await VSConfig.get();
@@ -30,10 +31,11 @@
     const { creds = [], events = [], queue = [], lastSync = 0, credTrustedHosts = [] } = await chrome.storage.local.get(['creds', 'events', 'queue', 'lastSync', 'credTrustedHosts']);
     const { dataConsent } = await chrome.storage.local.get('dataConsent');
     const policySet = cfg._managed.length > 0;
-    $('consentState').textContent = policySet ? 'Browsing protection is set by your organisation.'
-      : dataConsent ? `You agreed to browsing protection on ${new Date(dataConsent.at).toLocaleDateString()}.` : 'Browsing protection is off until you agree.';
-    $('consentToggle').hidden = policySet;
-    $('consentToggle').textContent = dataConsent ? 'Turn off and forget learned password' : 'Review and turn on';
+    const permitted = await chrome.permissions.contains(PROTECTION_ACCESS);
+    $('consentState').textContent = policySet ? (permitted ? 'Browsing protection is set by your organisation.' : 'Your organisation turned on browsing protection. Chrome still needs your one-time permission to check the sites you visit.')
+      : dataConsent && permitted ? `You agreed to browsing protection on ${new Date(dataConsent.at).toLocaleDateString()}.` : 'Browsing protection is off until you agree.';
+    $('consentToggle').hidden = policySet && permitted;
+    $('consentToggle').textContent = dataConsent && permitted ? 'Turn off and forget learned password' : 'Review and turn on';
     $('credTrustedState').textContent = credTrustedHosts.length ? 'Your work password is allowed on these sites:' : 'No sites are allowed to receive your work password.';
     $('credTrustedList').textContent = '';
     for (const host of credTrustedHosts) {
@@ -71,6 +73,11 @@
     }
     if (out.apiEndpoint && !/^https:\/\//i.test(out.apiEndpoint)) { $('status').textContent = 'API endpoint must use https://'; return; }
     if (out.communityEndpoint && !/^https:\/\//i.test(out.communityEndpoint)) { $('status').textContent = 'Community server must use https://'; return; }
+    // The console is reached from this browser, so Chrome must allow its address (asked within this click).
+    const origins = [out.apiEndpoint, out.communityEndpoint].filter(Boolean).map((u) => { try { return new URL(u).origin + '/*'; } catch (_) { return ''; } }).filter(Boolean);
+    if (origins.length && !(await chrome.permissions.request({ origins }).catch(() => false))) {
+      $('status').textContent = 'Chrome did not allow access to the console address, so IOC Triage cannot reach it. Save again and choose Allow.'; return;
+    }
     await VSConfig.saveUser(out);
     $('status').textContent = 'Saved ✓';
     setTimeout(() => { $('status').textContent = ''; }, 2500);
@@ -92,8 +99,11 @@
 
   $('consentToggle').addEventListener('click', async () => {
     const { dataConsent } = await chrome.storage.local.get('dataConsent');
-    if (!dataConsent) { chrome.tabs.create({ url: chrome.runtime.getURL('pages/welcome.html') }); return; }
+    const permitted = await chrome.permissions.contains(PROTECTION_ACCESS);
+    if (!dataConsent || !permitted) { chrome.tabs.create({ url: chrome.runtime.getURL('pages/welcome.html') }); return; }
     if (!confirm('Turn off browsing protection and delete the learned password hash? The analyst panel keeps working.')) return;
+    // Withdrawing consent stops protection; the page scripts check it. The Chrome permission is left alone:
+    // removing "all sites" can also drop the threat-intel API hosts that lookups need.
     await chrome.runtime.sendMessage({ type: 'setDataConsent', agree: false });
     load();
   });

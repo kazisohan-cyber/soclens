@@ -133,6 +133,10 @@
     showTab('investigate');
   });
   $('sSave').addEventListener('click', async () => {
+    // Chrome must allow the AI provider and the highlight sites; ask inside this click, before anything else awaits.
+    const sites = $('sHighlight').checked ? $('sSites').value.split(/\s+/).filter(Boolean) : [];
+    const origins = [...siteOrigins(sites), ...aiOrigins(aiForm())];
+    if (origins.length) await chrome.permissions.request({ origins }).catch(() => false);
     const keys = {};
     document.querySelectorAll('[data-key]').forEach((f) => { keys[f.dataset.key] = f.value.trim(); });
     await send({ type: 'analystSave', patch: { keys, publicSources: $('sPublic').checked, highlight: $('sHighlight').checked, ai: $('sAi').checked,
@@ -172,7 +176,24 @@
     showAiFields();
   }
   $('aiProvider').addEventListener('change', () => { $('aiUrl').value = ''; showAiFields(); });
+  // The provider is called from this page, so its address needs a Chrome host permission (Gemini: the Google AI API).
+  function aiOrigins(c) {
+    const P = AI.PROVIDERS[c.provider];
+    if (!P) return [];
+    const url = P.askUrl ? (c.url || P.defaultUrl) : P.url || (c.provider === 'gemini' ? 'https://generativelanguage.googleapis.com/' : '');
+    try { return [new URL(url).origin + '/*']; } catch (_) { return []; }
+  }
+  function siteOrigins(sites) {
+    return sites.map((d) => d.replace(/^\*\./, '').toLowerCase()).filter((d) => /^[a-z0-9.-]+$/.test(d))
+      .flatMap((d) => ['https://' + d + '/*', 'https://*.' + d + '/*']);
+  }
   async function testAi() {
+    const origins = aiOrigins(aiForm());
+    if (origins.length && !(await chrome.permissions.request({ origins }).catch(() => false))) {
+      $('aiStat').className = 'keystat bad';
+      $('aiStat').textContent = '✗ Chrome did not allow access to this provider. Test again and choose Allow.';
+      return;
+    }
     const stat = $('aiStat');
     stat.className = 'keystat';
     stat.textContent = 'Testing…';

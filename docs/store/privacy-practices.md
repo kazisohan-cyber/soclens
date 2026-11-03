@@ -1,6 +1,6 @@
 # Privacy practices tab
 
-Paste each block into the matching dashboard field. Each block is under 1,000 characters. Answers match `PRIVACY.md` and the 0.8.0 code. `README.md` lists the remaining risks.
+Paste each block into the matching dashboard field. Each block is under 1,000 characters. Answers match `PRIVACY.md` and the 0.8.3 code. `README.md` lists the remaining risks.
 
 ## Single purpose description
 
@@ -16,10 +16,22 @@ IOC Triage helps people recognise and respond to phishing and malicious internet
 Saves settings, client notes, decision history, API keys the user enters, cached lookup results, the local activity log and the salted hash used by the credential guard, all in chrome.storage on this device. chrome.storage.session holds per-tab verdicts. chrome.storage.managed lets an organisation's admin set policy through the included managed schema.
 ```
 
-**webNavigation**
+**webNavigation** (optional: requested only when the user turns on browsing protection)
 
 ```text
-The phishing guard checks each top-level address in onBeforeNavigate, on the device, so a dangerous site is replaced by a warning page before it loads. If an admin enables sign-in verification for a company console, onCommitted and onCreatedNavigationTarget are also used to recognise sign-ins on identity-provider pages. Addresses are not stored as a browsing history and are not sent anywhere for normal sites.
+Optional permission, requested only when the user turns on browsing protection on the welcome page. The phishing guard checks each top-level address in onBeforeNavigate, on the device, so a dangerous site is replaced by a warning page before it loads. If an admin enables sign-in verification for a company console, onCommitted and onCreatedNavigationTarget are also used to recognise sign-ins on identity-provider pages. Addresses are not stored as a browsing history and are not sent anywhere for normal sites.
+```
+
+**scripting**
+
+```text
+Registers the browsing-protection and highlighting content scripts at runtime, and only after the user grants the optional site access for them. Without that grant no content script is registered. The extension never injects code fetched from anywhere: the scripts are the files packaged in the extension.
+```
+
+**activeTab**
+
+```text
+When the user clicks the toolbar button, the popup reads the address of the current tab to show that page's verdict. activeTab gives this access only for the tab the user acted on, so the extension needs no standing access to every site for the popup.
 ```
 
 **alarms**
@@ -58,14 +70,22 @@ Copies what the user asks for when they click a Copy button: ticket notes (forma
 Adds one session rule that removes the Origin header from the extension's own background requests to api.greynoise.io, because that API refuses requests carrying a browser Origin header. The rule is limited to that one domain and to tabId -1, so it never touches web pages or any other request. No other rules exist, and nothing is blocked or redirected through this API.
 ```
 
-**Host permission: `http://*/*` and `https://*/*`**
+**Host permissions: threat-intel APIs (required)**
 
 ```text
-Phishing can appear on any site, so protection cannot be limited to a list of hosts. Content scripts run on every http and https page to detect fake logins and stop a work password being typed on the wrong site, and this must happen before the user submits, so asking for access per site would come too late. This analysis runs on the device.
+The analyst panel calls these services directly from the browser when the user investigates an indicator: api.abuseipdb.com, api.greynoise.io, internetdb.shodan.io, ipinfo.io, www.virustotal.com, threatfox-api.abuse.ch, urlhaus-api.abuse.ch, mb-api.abuse.ch, urlscan.io, rdap.org, dns.google, cloudflare-dns.com, www.cisa.gov, api.first.org and services.nvd.nist.gov. Only the indicator being investigated is sent. Page content, browsing history and passwords are never sent. The extension does not read cookies.
+```
 
-Host access also lets the panel call intel services directly from the browser, across origins. These include endpoints the user chooses and that cannot be listed in advance: their own AI provider or local model, and their organisation's console.
+**Optional host permissions: `http://*/*` and `https://*/*`**
 
-Page content, browsing history and passwords are not sent to any intel service. The extension does not read cookies. Only the indicator the user investigates is sent, and for an already suspicious site its domain name may go to rdap.org. The full source is public.
+```text
+Optional. Nothing is granted at install. Chrome asks the user only when they turn on browsing protection, or allow a single site or service in Settings.
+
+Phishing can appear on any site, so when protection is on, content scripts check every page on the device for fake logins and stop a work password being typed on the wrong site, before the user submits. Per-site access would come too late for that.
+
+The same optional access lets the user add endpoints that cannot be listed in advance: their own AI provider or local model, their organisation's console, and the analyst sites where indicators are highlighted. Each one is requested when the user saves it.
+
+All page analysis stays on the device. The full source is public.
 ```
 
 ## Remote code

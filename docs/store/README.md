@@ -30,14 +30,14 @@ The welcome page, consent step and `PRIVACY.md` gaps found earlier are fixed in 
 5. Build the package from the committed code, in the repo root:
 
    ```bash
-   git archive --format=zip -o ioc-triage-extension-v0.8.2.zip HEAD:extension
+   git archive --format=zip -o ioc-triage-extension-v0.8.3.zip HEAD:extension
    ```
 
 6. Click **Add new item** and upload the zip. `*.zip` is already ignored by git.
 7. Paste [listing.md](listing.md) and [privacy-practices.md](privacy-practices.md) into their tabs, and upload the icon and screenshots.
 8. Record the video and upload it to YouTube (optional).
 9. Check the data-use boxes against what the form shows. I read them from Google's documentation screenshot, not the live dashboard, because I can't sign in to it. The same applies to the category name and any field length limits.
-10. Click **Submit for review**. Expect a longer review because of the broad host access. I found no official figure for how long it takes.
+10. Click **Submit for review**. Since 0.8.3 access to every site is optional and requested at runtime, so the install prompt lists only the threat-intel APIs. I found no official figure for how long it takes.
 11. After approval, update the README's install section, the website and the policy snippets with the new store extension ID. Developer-mode installs won't update automatically, so those users need to reinstall from the store.
 
 GitHub Pages serves `docs/`, so this pack is public under `/soclens/store/`. It holds no secrets.

@@ -2,21 +2,42 @@
   "manifest_version": 3,
   "name": "IOC Triage – IOC Lookup, Threat Intel & SOC Analyst Assistant",
   "short_name": "IOC Triage",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "description": "Instant verdicts for any IP, domain, URL, hash or CVE, ticket notes, email header analysis, and phishing protection.",
   "author": "OpsVantage",
   "minimum_chrome_version": "116",
   "permissions": [
     "storage",
-    "webNavigation",
     "alarms",
     "notifications",
     "contextMenus",
     "sidePanel",
     "clipboardWrite",
-    "declarativeNetRequestWithHostAccess"
+    "declarativeNetRequestWithHostAccess",
+    "scripting",
+    "activeTab"
+  ],
+  "optional_permissions": [
+    "webNavigation"
   ],
   "host_permissions": [
+    "https://api.abuseipdb.com/*",
+    "https://api.greynoise.io/*",
+    "https://internetdb.shodan.io/*",
+    "https://ipinfo.io/*",
+    "https://www.virustotal.com/*",
+    "https://threatfox-api.abuse.ch/*",
+    "https://urlhaus-api.abuse.ch/*",
+    "https://mb-api.abuse.ch/*",
+    "https://urlscan.io/*",
+    "https://rdap.org/*",
+    "https://dns.google/*",
+    "https://cloudflare-dns.com/*",
+    "https://www.cisa.gov/*",
+    "https://api.first.org/*",
+    "https://services.nvd.nist.gov/*"
+  ],
+  "optional_host_permissions": [
     "http://*/*",
     "https://*/*"
   ],
@@ -46,45 +67,6 @@
   "storage": {
     "managed_schema": "managed_schema.json"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "content/ui.js",
-        "content/page-guard.js"
-      ],
-      "run_at": "document_start",
-      "all_frames": true
-    },
-    {
-      "matches": [
-        "https://mail.google.com/*",
-        "https://outlook.office.com/*",
-        "https://outlook.office365.com/*",
-        "https://outlook.live.com/*",
-        "https://outlook.cloud.microsoft/*"
-      ],
-      "js": [
-        "content/ui.js",
-        "content/webmail.js"
-      ],
-      "run_at": "document_idle"
-    },
-    {
-      "matches": [
-        "http://*/*",
-        "https://*/*"
-      ],
-      "js": [
-        "lib/ioc.js",
-        "content/ioc-highlight.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
   "side_panel": {
     "default_path": "pages/analyst.html"
   }

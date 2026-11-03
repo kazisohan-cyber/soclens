@@ -17,15 +17,73 @@ function cfg() { return (cfgPromise = cfgPromise || VSConfig.get().then(applyCon
 
 // Browsing protection reads pages, email and password fields, so it waits for the user's agreement on the
 // welcome page. An admin's browser policy counts as the organisation's decision. The analyst panel only acts on request.
+// It also needs Chrome's optional permissions (every site + navigation), which only a click on the welcome page can grant.
 async function applyConsent(c) {
   const { dataConsent } = await chrome.storage.local.get('dataConsent');
-  c.agreed = !!dataConsent || c._managed.length > 0;
+  c.permitted = await hasProtectionAccess();
+  c.agreed = (!!dataConsent || c._managed.length > 0) && c.permitted;
   if (!c.agreed) Object.assign(c, { credentialGuard: false, webmailScanner: false, pageScanner: false, domainAgeLookup: false });
   return c;
 }
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'managed' || ['settings', 'userAllowed', 'remoteBlock', 'remotePolicy', 'enrollment', 'consent', 'dataConsent'].some((k) => k in changes)) cfgPromise = null;
 });
+
+// ------------------------------------------------- optional permissions ---
+// Install asks only for the threat-intel APIs. Access to every site (page guard, webmail scanner, highlighting
+// anywhere) and navigation events are optional, so the page scripts are registered at runtime once granted.
+
+const ALL_SITES = ['http://*/*', 'https://*/*'];
+const WEBMAIL = ['https://mail.google.com/*', 'https://outlook.office.com/*', 'https://outlook.office365.com/*', 'https://outlook.live.com/*', 'https://outlook.cloud.microsoft/*'];
+
+function hasProtectionAccess() {
+  return chrome.permissions.contains({ permissions: ['webNavigation'], origins: ALL_SITES }).catch(() => false);
+}
+
+// Highlighting also runs on single sites the analyst allowed from Settings; the script itself stays idle off analyst sites.
+async function pageScripts() {
+  const all = await chrome.permissions.contains({ origins: ALL_SITES }).catch(() => false);
+  const granted = all ? ALL_SITES : ((await chrome.permissions.getAll()).origins || []).filter((o) => /^https?:\/\//.test(o));
+  const list = [];
+  if (all) {
+    list.push({ id: 'guard', matches: ALL_SITES, js: ['content/ui.js', 'content/page-guard.js'], runAt: 'document_start', allFrames: true });
+    list.push({ id: 'webmail', matches: WEBMAIL, js: ['content/ui.js', 'content/webmail.js'], runAt: 'document_idle' });
+  }
+  if (granted.length) list.push({ id: 'highlight', matches: granted, js: ['lib/ioc.js', 'content/ioc-highlight.js'], runAt: 'document_idle' });
+  return list;
+}
+
+let scriptSync = Promise.resolve();
+function syncContentScripts() {
+  scriptSync = scriptSync.then(async () => {
+    if (!chrome.scripting) return;
+    const want = await pageScripts();
+    const have = await chrome.scripting.getRegisteredContentScripts();
+    const same = (a, b) => JSON.stringify([a.matches, a.js, a.runAt, !!a.allFrames]) === JSON.stringify([b.matches, b.js, b.runAt, !!b.allFrames]);
+    const stale = have.filter((h) => !want.some((w) => w.id === h.id && same(w, h))).map((h) => h.id);
+    if (stale.length) await chrome.scripting.unregisterContentScripts({ ids: stale });
+    const add = want.filter((w) => stale.includes(w.id) || !have.some((h) => h.id === w.id));
+    if (add.length) await chrome.scripting.registerContentScripts(add.map((s) => Object.assign({ persistAcrossSessions: true }, s)));
+  }).catch((e) => console.warn('IOC Triage: content script sync failed', e));
+  return scriptSync;
+}
+
+let navBound = false;
+function bindNavigation() {
+  if (navBound || !chrome.webNavigation) return;
+  navBound = true;
+  chrome.webNavigation.onBeforeNavigate.addListener(onBeforeNavigate);
+  chrome.webNavigation.onCommitted.addListener(onCommitted);
+  chrome.webNavigation.onCreatedNavigationTarget.addListener(onCreatedNavigationTarget);
+}
+
+function onPermissionsChanged() {
+  cfgPromise = null;
+  bindNavigation();
+  syncContentScripts();
+}
+chrome.permissions.onAdded.addListener(onPermissionsChanged);
+chrome.permissions.onRemoved.addListener(onPermissionsChanged);
 
 async function installId() {
   let { installId } = await chrome.storage.local.get('installId');
@@ -64,7 +122,7 @@ function blockPageUrl(v, kind) {
 
 // ---------------------------------------------------- navigation guard ---
 
-chrome.webNavigation.onBeforeNavigate.addListener(async (d) => {
+async function onBeforeNavigate(d) {
   if (d.frameId !== 0 || d.tabId < 0 || !/^https?:/i.test(d.url)) return;
   const c = await cfg();
   if (!c.agreed) return;
@@ -75,7 +133,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async (d) => {
     chrome.tabs.update(d.tabId, { url: blockPageUrl(v, 'url') });
     logEvent({ type: 'url_blocked', severity: 'high', url: d.url, host: v.host, score: v.score, reasons: v.reasons, brand: v.brand });
   }
-});
+}
 
 // ------------------------------------------------------- domain age ---
 
@@ -327,12 +385,13 @@ function setupAlarms() {
 }
 chrome.runtime.onInstalled.addListener((d) => {
   setupAlarms();
+  syncContentScripts();
   // First install, or an update from a version that never asked: show what is read and ask.
   if (d.reason === 'install' || d.reason === 'update') {
     cfg().then((c) => { if (!c.agreed) chrome.tabs.create({ url: chrome.runtime.getURL('pages/welcome.html') }); });
   }
 });
-chrome.runtime.onStartup.addListener(setupAlarms);
+chrome.runtime.onStartup.addListener(() => { setupAlarms(); syncContentScripts(); });
 chrome.alarms.onAlarm.addListener((a) => {
   if (a.name === 'flush') { flush(); flushAuth(); }
   if (a.name === 'blocklist') syncAll();
@@ -472,7 +531,7 @@ async function flushAuth() {
 }
 
 // Top-frame commits: start/refresh a pending sign-in on IdP pages; leaving the IdP back to an app = success.
-chrome.webNavigation.onCommitted.addListener(async (d) => {
+async function onCommitted(d) {
   if (d.frameId !== 0 || d.tabId < 0 || !/^https?:/i.test(d.url)) return;
   let u;
   try { u = new URL(d.url); } catch (_) { return; }
@@ -503,13 +562,16 @@ chrome.webNavigation.onCommitted.addListener(async (d) => {
   } else if (a) {
     await finishAuth(d.tabId, 'success');
   }
-});
+}
 
-chrome.webNavigation.onCreatedNavigationTarget.addListener(async (d) => {
+async function onCreatedNavigationTarget(d) {
   const src = await chrome.tabs.get(d.sourceTabId).catch(() => null);
   const host = src && src.url ? hostOf(src.url) : '';
   if (host) await chrome.storage.session.set({ ['opener:' + d.tabId]: host });
-});
+}
+
+// Listeners must be added on every service-worker start, after the handlers above exist.
+bindNavigation();
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   finishAuth(tabId, 'unknown');
