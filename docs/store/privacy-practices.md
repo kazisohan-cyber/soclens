@@ -115,7 +115,7 @@ Google's form asks what personal and sensitive data you "plan to collect from us
 | User activity | **Yes** | Password fields are watched for the credential guard, and that value is compared only as a hash on the device. Block, bypass and report actions go in the local log, and to the console if one is connected. |
 | Website content | **Yes** | Page text and titles are analysed on the device for fake logins, and text the user selects can be investigated. Only the extracted indicators are sent. |
 
-**Certifications: tick all three.** All are true for 0.8.0.
+**Certifications: tick all three.** All are true for 0.8.3.
 
 - I do not sell user data to third parties.
 - I do not use or transfer user data for purposes that are unrelated to my item's single purpose.
