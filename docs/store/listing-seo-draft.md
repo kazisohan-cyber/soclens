@@ -2,6 +2,8 @@
 
 Applied on 2026-11-04 for 0.8.3: the title and summary are in `extension/manifest.json`, and the description opening and Homepage URL are in `listing.md`. This file keeps the reasoning.
 
+**Rejected 2026-11-04 (Keyword Spam, "Yellow Argon"):** the store flagged the list of 12 service names in the description. Service names were then removed from the description and the summary. Do not list third-party product names in store metadata again; describe them generically ("public threat-intelligence services") and leave the names to the privacy policy and the site.
+
 ## Why change it
 
 Store search matches the words people type. Analysts search for what they want to do ("ip lookup", "virustotal", "check hash", "abuseipdb"), not for "SOC analyst assistant". The current title spends its words on "Assistant". The current summary lists features but none of the source names analysts search for.

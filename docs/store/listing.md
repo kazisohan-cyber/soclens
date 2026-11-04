@@ -9,7 +9,7 @@ The store reads both from `extension/manifest.json`, so they are already set by 
 | Field | Value | Length | Limit |
 |---|---|---|---|
 | Title (`name`) | IOC Triage – IP, Domain & Hash Lookup for SOC Analysts | 54 | 75 |
-| Short description (`description`) | Right-click any IP, domain, URL, hash or CVE to check it in VirusTotal, AbuseIPDB, GreyNoise, Shodan and more. Free, open source. | 129 | 132 |
+| Short description (`description`) | Right-click any IP, domain, URL, hash or CVE for a threat-intel verdict and a ready ticket note. Free and open source. | 118 | 132 |
 
 To change either one, edit the manifest and upload a new package.
 
@@ -18,7 +18,7 @@ To change either one, edit the manifest and upload a new package.
 **Description**
 
 ```text
-IOC Triage is a free, open-source IOC lookup and phishing checker for SOC analysts. Right-click any IP address, domain, URL, file hash, email address or CVE, or paste a whole alert, and it checks VirusTotal, AbuseIPDB, GreyNoise, Shodan InternetDB, ipinfo, URLhaus, ThreatFox, MalwareBazaar, urlscan.io, CISA KEV, EPSS and NVD for you (VirusTotal, AbuseIPDB, abuse.ch and urlscan.io need your own free API key). Each indicator gets a verdict with its reasons, and one click copies a finished ticket note. It also warns you about fake sites and fake logins as you browse.
+IOC Triage is a free, open-source IOC lookup and phishing checker for SOC analysts. Right-click any IP address, domain, URL, file hash, email address or CVE, or paste a whole alert, and it checks the indicator against public threat-intelligence services, plus any you add your own API keys for. Each indicator gets a verdict with its reasons, and one click copies a finished ticket note. It also warns you about fake sites and fake logins as you browse.
 
 FOR SOC ANALYSTS
 • Investigate: select text on any page, right-click and choose IOC Triage: Investigate, or paste a whole alert into the side panel. Defanged input is fine.

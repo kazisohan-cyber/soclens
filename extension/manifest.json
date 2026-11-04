@@ -3,7 +3,7 @@
   "name": "IOC Triage – IP, Domain & Hash Lookup for SOC Analysts",
   "short_name": "IOC Triage",
   "version": "0.8.3",
-  "description": "Right-click any IP, domain, URL, hash or CVE to check it in VirusTotal, AbuseIPDB, GreyNoise, Shodan and more. Free, open source.",
+  "description": "Right-click any IP, domain, URL, hash or CVE for a threat-intel verdict and a ready ticket note. Free and open source.",
   "author": "OpsVantage",
   "minimum_chrome_version": "116",
   "permissions": [
