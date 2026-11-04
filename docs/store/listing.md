@@ -34,7 +34,7 @@ FOR SOC ANALYSTS
 • Highlighting: colours IPs, domains and hashes on the analyst sites you choose. No lookup runs until you click.
 • Your own AI (optional, off by default): connect your AI provider or a local model for a summary, next checks or a client email draft.
 
-PROTECTION WHILE YOU BROWSE (turned on only after you agree)
+PROTECTION WHILE YOU BROWSE (turned on only after you agree and allow Chrome's prompt)
 • Blocks lookalike and impersonation pages before they load, and warns on suspicious ones.
 • Detects fake login pages that copy a known brand.
 • Scans email in Gmail and Outlook on the web, shows a warning banner and disables dangerous links.
