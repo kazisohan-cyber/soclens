@@ -148,6 +148,13 @@ mail('Newsletter', {
   senderName: 'GitHub', senderEmail: 'noreply@github.com', subject: 'Your weekly digest', text: 'Here is what happened this week.',
   links: [{ href: 'https://github.com/x', text: 'github.com/x' }, { href: 'https://www.google.com/url?q=https://docs.github.com/', text: 'Docs' }]
 }, '<=caution');
+// Meta's real notification senders must not be called phishing (false positive on 2026-11-12)
+const metaInvite = { senderName: 'Facebook', subject: "Action required: You're invited to join the Example business portfolio",
+  text: 'You were invited to join a business portfolio.', links: [] };
+mail('Facebook from facebookmail.com', { ...metaInvite, senderEmail: 'notification@facebookmail.com' }, '<=caution');
+mail('Instagram from mail.instagram.com', { ...metaInvite, senderName: 'Instagram', senderEmail: 'security@mail.instagram.com' }, '<=caution');
+mail('Facebook from facebookmai1.com', { ...metaInvite, senderEmail: 'notification@facebookmai1.com' }, 'block');
+mail('Facebook from fb-support.mail.com', { ...metaInvite, senderEmail: 'team@fb-support.mail.com' }, 'warn');
 mail('HTML attachment lure', {
   senderName: 'Accounts', senderEmail: 'billing@random-vendor.com', subject: 'Invoice overdue — action required',
   text: 'Payment failed. Open the attached invoice immediately.', attachments: ['Invoice_8812.html'], links: []

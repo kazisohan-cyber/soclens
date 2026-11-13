@@ -75,9 +75,10 @@
       domains: ['dhl.com', 'dhl.de', 'dhl.com.my', 'dhl.com.sg', 'dhl.co.id', 'dhl'] },
     { name: 'FedEx', labels: ['fedex'], keywords: ['fedex'], pageTerms: ['fedex'], domains: ['fedex.com', 'fedex'] },
     { name: 'LinkedIn', labels: ['linkedin'], keywords: ['linkedin'], pageTerms: ['linkedin'], domains: ['linkedin.com', 'licdn.com', 'lnkd.in'] },
-    { name: 'Facebook', labels: ['facebook', 'meta', 'instagram', 'whatsapp'], keywords: ['facebook', 'instagram', 'whatsapp', 'metabusiness'],
+    { name: 'Facebook', labels: ['facebook', 'facebookmail', 'meta', 'instagram', 'whatsapp'], keywords: ['facebook', 'instagram', 'whatsapp', 'metabusiness'],
       pageTerms: ['facebook', 'instagram', 'whatsapp', 'meta business'],
-      domains: ['facebook.com', 'fb.com', 'meta.com', 'instagram.com', 'whatsapp.com', 'whatsapp.net', 'fbcdn.net', 'messenger.com', 'cdninstagram.com'] },
+      domains: ['facebook.com', 'fb.com', 'meta.com', 'instagram.com', 'whatsapp.com', 'whatsapp.net', 'fbcdn.net', 'messenger.com', 'cdninstagram.com',
+        'facebookmail.com', 'metamail.com'] },
     { name: 'Netflix', labels: ['netflix'], keywords: ['netflix'], pageTerms: ['netflix'], domains: ['netflix.com', 'nflxext.com', 'netflix'] },
     { name: 'Okta', labels: ['okta'], keywords: ['okta'], pageTerms: ['okta'], domains: ['okta.com', 'oktacdn.com', 'okta-emea.com', 'oktapreview.com'] },
     { name: 'Zoom', labels: ['zoom'], keywords: ['zoomus'], pageTerms: ['zoom meeting'], domains: ['zoom.us', 'zoom.com', 'zoomgov.com'] },
@@ -536,8 +537,8 @@
       if (!sv.allow && sv.brand) add(45, `Sender domain imitates ${sv.brand} (${senderDomain})`);
       const named = brands.find((b) => b.pageTerms.concat(b.keywords).some((t) => t.length >= 4 && senderName.includes(t)));
       if (named && !isBrandLegit(senderDomain, named)) add(35, `Sender name says "${email.senderName}" but mail comes from ${senderDomain}`);
-      if (freeHostingOf(senderDomain) || /^(gmail|outlook|hotmail|yahoo|proton|protonmail|gmx|mail|yandex|aol|icloud)\./.test(senderDomain)) {
-        if (named) add(15, 'Brand message sent from a free mailbox');
+      if (freeHostingOf(senderDomain) || /^(gmail|outlook|hotmail|yahoo|proton|protonmail|gmx|mail|yandex|aol|icloud)\./.test(registrableDomain(senderDomain))) {
+        if (named && !isBrandLegit(senderDomain, named)) add(15, 'Brand message sent from a free mailbox');
       }
     }
 
