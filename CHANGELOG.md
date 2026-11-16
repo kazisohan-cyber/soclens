@@ -2,7 +2,7 @@
 
 All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.8.4] - 2026-11-16
 
 ### Fixed
 - **Fewer false alarms on real brand mail.** Meta's notification domains (facebookmail.com, metamail.com), Instagram's mail.instagram.com, brands' own country domains (amazon.de, paypal.co.uk, paypal.com.au, dhl.co.uk), and real mail domains such as dropboxmail.com, itunes.com and microsoftemail.com are no longer called impersonation. Typosquats of the new domains still block.
