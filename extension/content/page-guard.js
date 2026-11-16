@@ -199,6 +199,8 @@
   let shown = false;
 
   const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  // A company's own page on a social network ("follow us on LinkedIn"), not that network's sign-in.
+  const SOCIAL_PROFILE = /^https?:\/\/(?:[a-z0-9-]+\.)*(?:linkedin\.com\/(?:company|in|showcase|school|posts|feed\/update)\/|facebook\.com\/(?!login|dialog|sharer|recover|checkpoint)[^/?#]+|instagram\.com\/(?!accounts)[^/?#]+|(?:twitter|x)\.com\/(?!i\/|login)[^/?#]+|youtube\.com\/(?:@|c\/|channel\/|user\/)|tiktok\.com\/@|wa\.me\/|t\.me\/)/i;
 
   function collect() {
     const pw = [...document.querySelectorAll('input[type=password]')].filter(visible);
@@ -215,6 +217,14 @@
         if (n0 >= 30) return;
         const btn = n.closest('button, a, [role=button]');
         if (btn && sso.test((btn.innerText || btn.getAttribute('aria-label') || '') + ' ' + (n.getAttribute('alt') || ''))) return;
+        // "Follow us" icons and embedded post feeds are not a logo claim: skip hidden images, small icons,
+        // and images that link to a social profile. A spoofed sign-in logo is visible and larger than an icon.
+        const box = n.tagName.toLowerCase() === 'title' ? n.closest('svg') : n;
+        if (!box || !visible(box)) return;
+        const r = box.getBoundingClientRect();
+        if (r.width <= 24 && r.height <= 24) return;
+        const link = n.closest('a[href]');
+        if (link && SOCIAL_PROFILE.test(link.href)) return;
         n0++;
         t.push((n.getAttribute('alt') || n.getAttribute('aria-label') || n.textContent || '') + ' ' + (n.getAttribute('src') || '').split('/').pop());
       });

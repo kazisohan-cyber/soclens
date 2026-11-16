@@ -43,14 +43,14 @@
   // `keywords` = tokens that signal the brand in a hostname / page, `domains` = legit domains.
   // A one-label domain is a top-level domain the brand itself runs, such as .google.
   const BRANDS = [
-    { name: 'Microsoft', labels: ['microsoft', 'microsoftonline', 'office365', 'outlook', 'onedrive', 'sharepoint'],
+    { name: 'Microsoft', labels: ['microsoft', 'microsoftonline', 'microsoftemail', 'office365', 'outlook', 'onedrive', 'sharepoint'],
       keywords: ['microsoft', 'microsoftonline', 'office365', 'microsoft365', 'outlook', 'onedrive', 'sharepoint', 'hotmail', 'msonline', 'azuread', 'entra'],
       pageTerms: ['microsoft', 'office 365', 'office365', 'microsoft 365', 'outlook', 'onedrive', 'sharepoint', 'sign in to your account'],
       domains: ['microsoft.com', 'microsoftonline.com', 'live.com', 'office.com', 'office365.com', 'outlook.com', 'sharepoint.com',
         'onedrive.com', 'onedrive.live.com', 'microsoft365.com', 'cloud.microsoft', 'azure.com', 'windows.net', 'msauth.net', 'msftauth.net',
         'aka.ms', 'bing.com', 'skype.com', 'msn.com', 'xbox.com', 'hotmail.com', 'onenote.com', 'msidentity.com', 'microsoftonline-p.com',
         'sharepointonline.com', 'office.net', 'microsoft.net', 'windowsazure.com', 'azureedge.net', 'live.net', 'msecnd.net', 'gfx.ms',
-        'microsoft', 'azure', 'bing', 'office', 'windows', 'xbox', 'hotmail'] },
+        'microsoft', 'azure', 'bing', 'office', 'windows', 'xbox', 'hotmail', 'microsoftemail.com', 'microsoftstoreemail.com'] },
     { name: 'Google', labels: ['google', 'gmail', 'youtube'],
       keywords: ['google', 'gmail', 'gdrive', 'googledrive', 'googledocs'],
       pageTerms: ['google', 'gmail', 'google drive', 'google docs'],
@@ -59,20 +59,20 @@
     { name: 'Apple', labels: ['apple', 'icloud', 'appleid'],
       keywords: ['apple', 'icloud', 'appleid', 'itunes'],
       pageTerms: ['apple id', 'icloud', 'apple account'],
-      domains: ['apple.com', 'icloud.com', 'me.com', 'mzstatic.com', 'apple.news', 'apple', 'apple.com.cn'] },
+      domains: ['apple.com', 'icloud.com', 'me.com', 'mzstatic.com', 'apple.news', 'apple', 'apple.com.cn', 'icloud.com.cn', 'itunes.com'] },
     { name: 'PayPal', labels: ['paypal'], keywords: ['paypal'], pageTerms: ['paypal'],
-      domains: ['paypal.com', 'paypalobjects.com', 'paypal.me'] },
+      domains: ['paypal.com', 'paypalobjects.com', 'paypal.me', 'paypal-community.com', 'paypal.com.au'] },
     { name: 'Amazon', labels: ['amazon', 'aws'], keywords: ['amazon', 'awsconsole'], pageTerms: ['amazon', 'aws management console'],
       domains: ['amazon.com', 'amazon.co.uk', 'amazon.sg', 'amazon.in', 'amazon.co.jp', 'amazon.com.au', 'aws.amazon.com', 'amazonaws.com', 'awsstatic.com', 'media-amazon.com', 'amazon', 'aws',
-        'amazon.com.mx', 'amazon.com.br', 'amazon.com.be', 'amazon.com.tr', 'amazon.co.za'] },
+        'amazon.com.mx', 'amazon.com.br', 'amazon.com.be', 'amazon.com.tr', 'amazon.co.za', 'primevideo.com'] },
     { name: 'DocuSign', labels: ['docusign'], keywords: ['docusign'], pageTerms: ['docusign'],
       domains: ['docusign.com', 'docusign.net'] },
-    { name: 'Dropbox', labels: ['dropbox'], keywords: ['dropbox'], pageTerms: ['dropbox'],
-      domains: ['dropbox.com', 'dropboxusercontent.com', 'db.tt'] },
+    { name: 'Dropbox', labels: ['dropbox', 'dropboxmail'], keywords: ['dropbox'], pageTerms: ['dropbox'],
+      domains: ['dropbox.com', 'dropboxusercontent.com', 'db.tt', 'dropboxmail.com', 'hellosign.com'] },
     { name: 'Adobe', labels: ['adobe'], keywords: ['adobe', 'adobesign', 'acrobat'], pageTerms: ['adobe', 'adobe sign', 'adobe acrobat'],
       domains: ['adobe.com', 'adobesign.com', 'adobelogin.com', 'acrobat.com', 'echosign.com', 'adobe.io'] },
     { name: 'DHL', labels: ['dhl'], keywords: ['dhl'], pageTerms: ['dhl express'],
-      domains: ['dhl.com', 'dhl.de', 'dhl.com.my', 'dhl.com.sg', 'dhl.co.id', 'dhl'] },
+      domains: ['dhl.com', 'dhl.de', 'dhl.com.my', 'dhl.com.sg', 'dhl.co.id', 'dhl', 'dhlparcel.nl', 'dpdhl.com'] },
     { name: 'FedEx', labels: ['fedex'], keywords: ['fedex'], pageTerms: ['fedex'], domains: ['fedex.com', 'fedex'] },
     { name: 'LinkedIn', labels: ['linkedin'], keywords: ['linkedin'], pageTerms: ['linkedin'], domains: ['linkedin.com', 'licdn.com', 'lnkd.in'] },
     { name: 'Facebook', labels: ['facebook', 'facebookmail', 'meta', 'instagram', 'whatsapp'], keywords: ['facebook', 'instagram', 'whatsapp', 'metabusiness'],
@@ -270,8 +270,10 @@
     return (list || []).some((d) => hostMatches(host, d));
   }
 
+  // Only a customer's subdomain counts: wordpress.com itself (and www.) is the provider's own site.
   function freeHostingOf(host) {
-    return FREE_HOSTING.find((h) => hostMatches(host, h)) || null;
+    const h0 = String(host || '').toLowerCase().replace(/^www\./, '');
+    return FREE_HOSTING.find((h) => h0 !== h && hostMatches(h0, h)) || null;
   }
 
   function allBrands(extra) {
@@ -291,6 +293,15 @@
 
   function isBrandLegit(host, brand) {
     return hostInList(host, brand.domains);
+  }
+
+  // paypal.de, amazon.fr, dhl.co.uk: the brand's own name as the whole owner label on an ordinary
+  // country domain. The address check already treats these as the brand's own; free hosting and
+  // high-abuse TLDs never count.
+  function isBrandCountryDomain(host, brand) {
+    const reg = registrableDomain(host);
+    const tld = reg.split('.').pop();
+    return brand.labels.includes(decodeHost(reg.split('.')[0])) && !freeHostingOf(host) && !RISKY_TLDS.has(tld);
   }
 
   /** Unwrap well-known redirect / safe-link wrappers to reach the real destination. */
@@ -534,11 +545,14 @@
 
     if (senderDomain && !trustedSender) {
       const sv = analyzeUrl('https://' + senderDomain + '/', cfg);
-      if (!sv.allow && sv.brand) add(45, `Sender domain imitates ${sv.brand} (${senderDomain})`);
-      const named = brands.find((b) => b.pageTerms.concat(b.keywords).some((t) => t.length >= 4 && senderName.includes(t)));
-      if (named && !isBrandLegit(senderDomain, named)) add(35, `Sender name says "${email.senderName}" but mail comes from ${senderDomain}`);
+      // sv.brand alone is not imitation: the address check also names the brand for its own country domains.
+      if (!sv.allow && sv.brand && sv.score > 0) add(45, `Sender domain imitates ${sv.brand} (${senderDomain})`);
+      // Short brand names (DHL, DBS, UOB) count only as a whole word, so "Adhlaan" or "dbsmith" do not match.
+      const named = brands.find((b) => b.pageTerms.concat(b.keywords).some((t) => t.length >= 4 ? senderName.includes(t)
+        : t.length === 3 && new RegExp('(^|[^a-z0-9])' + t + '([^a-z0-9]|$)').test(senderName)));
+      if (named && !isBrandLegit(senderDomain, named) && !isBrandCountryDomain(senderDomain, named)) add(35, `Sender name says "${email.senderName}" but mail comes from ${senderDomain}`);
       if (freeHostingOf(senderDomain) || /^(gmail|outlook|hotmail|yahoo|proton|protonmail|gmx|mail|yandex|aol|icloud)\./.test(registrableDomain(senderDomain))) {
-        if (named && !isBrandLegit(senderDomain, named)) add(15, 'Brand message sent from a free mailbox');
+        if (named && !isBrandLegit(senderDomain, named) && !isBrandCountryDomain(senderDomain, named)) add(15, 'Brand message sent from a free mailbox');
       }
     }
 
@@ -589,7 +603,7 @@
 
   const api = {
     analyzeUrl, analyzePage, analyzeEmail, unwrapUrl, defang, registrableDomain, hostMatches, hostInList,
-    decodeHost, skeleton, levenshtein, punycodeDecode, BRANDS, FREE_HOSTING
+    decodeHost, skeleton, levenshtein, punycodeDecode, isBrandCountryDomain, BRANDS, FREE_HOSTING
   };
   root.VSAnalyzer = api;
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

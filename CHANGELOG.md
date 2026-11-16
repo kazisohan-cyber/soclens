@@ -2,6 +2,17 @@
 
 All notable changes to IOC Triage (called SOCLens up to 0.6.0). Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- **Fewer false alarms on real brand mail.** Meta's notification domains (facebookmail.com, metamail.com), Instagram's mail.instagram.com, brands' own country domains (amazon.de, paypal.co.uk, paypal.com.au, dhl.co.uk), and real mail domains such as dropboxmail.com, itunes.com and microsoftemail.com are no longer called impersonation. Typosquats of the new domains still block.
+- **Login pages with "follow us" icons are not called brand imitations.** Hidden images, small icons and images linking to a company's social profile no longer count as a LinkedIn / Facebook logo claim (seen on an HR portal's sign-in page).
+- **A hosting provider's own site is not "free hosting".** wordpress.com/log-in was flagged; only customer subdomains (name.wordpress.com) count now.
+- **Short brand names (DHL, DBS, UOB) in a sender name are now noticed** as whole words.
+
+### Added
+- `tests/fp-sweep.mjs` (offline) and `tests/fp-sweep-pages.mjs` (headless Edge) run real senders, brand-like domains and real sign-in pages through the checks and list anything that is not safe. Run both before each release.
+
 ## [0.8.3] - 2026-11-03
 
 ### Changed

@@ -155,6 +155,17 @@ mail('Facebook from facebookmail.com', { ...metaInvite, senderEmail: 'notificati
 mail('Instagram from mail.instagram.com', { ...metaInvite, senderName: 'Instagram', senderEmail: 'security@mail.instagram.com' }, '<=caution');
 mail('Facebook from facebookmai1.com', { ...metaInvite, senderEmail: 'notification@facebookmai1.com' }, 'block');
 mail('Facebook from fb-support.mail.com', { ...metaInvite, senderEmail: 'team@fb-support.mail.com' }, 'warn');
+// Brands' own country domains and mail domains (false positives found by tests/fp-sweep.mjs on 2026-11-16)
+const notice = { subject: 'Your account: please review', text: 'Notification from your account.', links: [] };
+mail('Amazon from amazon.de', { ...notice, senderName: 'Amazon', senderEmail: 'auto-confirm@amazon.de' }, 'safe');
+mail('PayPal from paypal.co.uk', { ...notice, senderName: 'PayPal', senderEmail: 'service@paypal.co.uk' }, 'safe');
+mail('Dropbox from dropboxmail.com', { ...notice, senderName: 'Dropbox', senderEmail: 'no-reply@dropboxmail.com' }, 'safe');
+mail('Apple from itunes.com', { ...notice, senderName: 'Apple', senderEmail: 'do_not_reply@itunes.com' }, 'safe');
+mail('Microsoft from microsoftemail.com', { ...notice, senderName: 'Microsoft', senderEmail: 'promotions@email.microsoftemail.com' }, 'safe');
+mail('PayPal from paypal.com.ar still warns', { ...notice, senderName: 'PayPal', senderEmail: 'service@paypal.com.ar' }, 'warn');
+mail('Microsoft from microsoftemaii.com blocks', { ...notice, senderName: 'Microsoft', senderEmail: 'alert@microsoftemaii.com' }, 'block');
+mail('DHL name from dhl-delivery.co is noticed', { ...notice, senderName: 'DHL', senderEmail: 'track@dhl-delivery.co' }, 'caution');
+mail('DHL inside another word is not a DHL claim', { ...notice, senderName: 'Adhlaan Rahman', senderEmail: 'adhlaan@example.org' }, 'safe');
 mail('HTML attachment lure', {
   senderName: 'Accounts', senderEmail: 'billing@random-vendor.com', subject: 'Invoice overdue — action required',
   text: 'Payment failed. Open the attached invoice immediately.', attachments: ['Invoice_8812.html'], links: []
